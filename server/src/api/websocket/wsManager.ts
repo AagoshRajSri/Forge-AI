@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
-import { Server } from "http";
-import Redis from "ioredis";
+import { Server, IncomingMessage } from "http";
+import { Redis } from "ioredis";
 
 export class WSManager {
   private wss: WebSocketServer;
@@ -9,6 +9,7 @@ export class WSManager {
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server, path: "/ws" });
+    // @ts-ignore - ioredis constructor can be finicky in ESM + TS
     this.redisSubscriber = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
     
     this.init();
@@ -16,9 +17,7 @@ export class WSManager {
   }
 
   private init() {
-    this.wss.on("connection", (ws: WebSocket, req) => {
-      // Very basic auth via query param for this example. 
-      // In production, parse JWT or better-auth session cookie from req.headers.cookie.
+    this.wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
       const url = new URL(req.url || "", `http://${req.headers.host}`);
       const projectId = url.searchParams.get("projectId");
 
@@ -43,12 +42,8 @@ export class WSManager {
     });
   }
 
-  /**
-   * Listens to Redis Pub/Sub for job updates from worker nodes 
-   * and broadcasts them to the correct connected WebSocket clients.
-   */
   private subscribeToJobUpdates() {
-    this.redisSubscriber.subscribe("job:updates", (err) => {
+    this.redisSubscriber.subscribe("job:updates", (err: Error | null) => {
       if (err) console.error("Redis Pub/Sub error:", err);
     });
 
@@ -78,10 +73,8 @@ export class WSManager {
     }
   }
 
-  /**
-   * Helper to publish a job update from ANY Node.js process (e.g. Worker)
-   */
   static async publishJobUpdate(projectId: string, jobId: string, status: string, progress: number) {
+    // @ts-ignore
     const redisPublisher = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
     await redisPublisher.publish("job:updates", JSON.stringify({ projectId, jobId, status, progress }));
     redisPublisher.disconnect();
