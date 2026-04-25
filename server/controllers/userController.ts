@@ -14,7 +14,7 @@ export const getUserCredits = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-    res.json({ credits: user?.credits });
+    res.json({ credits: user?.credits ?? 0 });
   } catch (error: any) {
     console.log(error.code || error.message);
     res.status(500).json({ message: error.message });

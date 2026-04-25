@@ -42,16 +42,9 @@ app.all(/^\/api\/auth(\/.*)?$/, (req: Request, res: Response) => {
 app.use("/api/user", userRouter);
 app.use("/api/project", projectRouter);
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../../client/dist")));
-  app.get("/:path*", (req: Request, res: Response) => {
-    res.sendFile(path.join(__dirname, "../../client/dist/index.html"));
-  });
-} else {
   app.get("/", (req: Request, res: Response) => {
     res.send("Server is Live!");
   });
-}
 
 import { WSManager } from "./src/api/websocket/wsManager.js";
 

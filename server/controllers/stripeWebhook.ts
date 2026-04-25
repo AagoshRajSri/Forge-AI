@@ -28,10 +28,8 @@ export const stripeWebHook = async (request: Request, response: Response) => {
           payment_intent: paymentIntent.id,
         });
         const session = sessionList.data[0];
-        const { transactionId, appId } = session.metadata as {
-          transactionId: string;
-          appId: string;
-        };
+        const metadata = (session.metadata || {}) as Record<string, string>;
+        const { transactionId, appId } = metadata;
 
         if (appId === "ai-site-builder" && transactionId) {
           const transaction = await prisma.transaction.update({
