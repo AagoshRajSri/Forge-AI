@@ -1,116 +1,74 @@
-# AI Website Builder
+# ⚒️ Forge AI — The Matrix-Themed AI Website Builder
 
-An intelligent, full-stack application that generates production-ready websites (HTML & Tailwind CSS) from simple text prompts. Powered by Hugging Face's Qwen2.5-Coder model, this platform allows users to instantly create, iterate, and publish web projects.
+Forge AI is a premium, full-stack platform that transforms your ideas into production-ready websites in seconds. Inspired by "The Matrix" aesthetics, it provides a high-tech "Cockpit" environment where you can generate, iterate, and deploy web projects using natural language.
 
-## Features
+## 🚀 Key Features
 
-- **Prompt-to-Website:** Generate fully functional layouts just by describing what you want.
-- **Smart Revisions:** Chat with the AI to refine and modify your specific project versions.
-- **Version Control:** Automatically track changes, view history, and rollback to previous design iterations.
-- **Project Management:** Save your work, preview sites, and publish them to share with the community.
-- **Secure Authentication:** User sign-up and login powered by Better-Auth.
-- **Credit System & Monetization:** Start with free credits and purchase more via a secure Stripe integration.
+*   **Prompt-to-Website:** Generate complex, responsive layouts (HTML + Tailwind CSS) using the powerful `Qwen2.5-Coder-32B` model.
+*   **Intelligent Iteration:** Refine your site in real-time. Revisions are routed to a high-speed `7B` model to ensure latency is kept under 60 seconds.
+*   **Live Preview Cockpit:** Toggle between Desktop, Tablet, and Mobile viewports with a seamless, glassmorphic UI.
+*   **Stabilized AI Pipeline:** Built-in code validation ensures the AI never returns broken or empty HTML.
+*   **Version Control:** Automatically track design history and rollback to previous versions with a single click.
+*   **Credit-Safe Engine:** Integrated credit system with automated refunds on generation failures.
+*   **One-Click Deployment:** Publish your sites instantly to a public community gallery.
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework:** React 19 + TypeScript + Vite
-- **Styling:** Tailwind CSS (v4) + Class Variance Authority (CVA) + `clsx` + `tailwind-merge`
-- **Routing:** React Router v7
+- **Framework:** React 19 + Vite
+- **Styling:** Tailwind CSS v4 (Production-ready)
+- **UI Architecture:** Custom "Void/Nebula" theme with CSS variables and dynamic starfields.
 - **Icons:** Lucide React
-- **Notifications:** Sonner
 
 ### Backend
 - **Server:** Node.js + Express
-- **Database:** PostgreSQL (Hosted on Neon DB)
-- **ORM:** Prisma Client with `@neondatabase/serverless` and HTTP Fetch adapter for maximum stability in restricted environments.
-- **Authentication:** Better-Auth (Prisma Adapter)
-- **AI Integration:** Hugging Face Inference API (Router Endpoint: `Qwen/Qwen2.5-Coder-32B-Instruct`)
-- **Payments:** Stripe API
+- **Database:** PostgreSQL (Neon DB) with Prisma ORM.
+- **AI Engine:** Hugging Face Inference API (Qwen-2.5-Coder family).
+- **Authentication:** Better-Auth (Social + Email support).
+- **Payments:** Stripe API.
 
-## Getting Started
+## 📦 Setup & Installation
 
 ### Prerequisites
-
 - Node.js (v20+)
-- A Neon PostgreSQL Database
-- Hugging Face API Token (with access to the Inference API)
-- Stripe Account (for the credit system)
+- Neon DB Account (PostgreSQL)
+- Hugging Face API Key
+- Stripe Account
 
-### Environment Variables
+### Quick Start
 
-**Backend (`server/.env`)**
-```env
-# Server URLs
-TRUSTED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:3000
-NODE_ENV=development
-
-# Database 
-# Ensure you use the pooled URL with ?pgbouncer=true or standard URL depending on your network.
-DATABASE_URL=postgresql://<user>:<password>@<neon_host>/<dbname>?sslmode=require
-
-# Authentication (Better Auth)
-BETTER_AUTH_SECRET=your_super_secret_string
-BETTER_AUTH_URL=http://localhost:3000
-
-# Hugging Face AI
-HF_TOKEN=your_huggingface_token
-
-# Stripe
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-```
-
-**Frontend (`client/.env`)**
-```env
-VITE_BASE_URL=http://localhost:3000
-```
-
-### Installation
-
-1. **Clone the repository:**
+1. **Clone & Install**
    ```bash
-   git clone https://github.com/AagoshRajSri/AI-WebsiteBuilder.git
-   cd AI-WebsiteBuilder
+   git clone https://github.com/AagoshRajSri/Forge-AI.git
+   cd Forge-AI
+   # Install both client and server
+   cd client && npm install
+   cd ../server && npm install
    ```
 
-2. **Install dependencies:**
-   ```bash
-   # Install Client Dependencies
-   cd client
-   npm install
+2. **Configure Environment**
+   Copy `.env.example` to `.env` in both `client/` and `server/` folders and fill in your credentials.
 
-   # Install Server Dependencies
-   cd ../server
-   npm install
-   ```
-
-3. **Database Setup (Server):**
+3. **Initialize Database**
    ```bash
    cd server
    npx prisma generate
-   npx prisma db push # Or use migrations if configured
+   npx prisma db push
    ```
 
-### Running the App Locally
+4. **Launch the Forge**
+   ```bash
+   # Terminal 1 (Server)
+   cd server && npm run dev
+   
+   # Terminal 2 (Client)
+   cd client && npm run dev
+   ```
 
-Start the backend server:
-```bash
-cd server
-npm run dev
-```
+## 🧠 Architecture Highlights
+- **Performance Routing:** Automatically switches between 32B and 7B models based on task complexity to maximize quality while preventing API timeouts.
+- **Resilient Prisma Adapter:** Uses `@neondatabase/serverless` to ensure database connectivity even behind restrictive network firewalls.
+- **Non-Destructive UI Updates:** Uses `morphdom`-inspired logic in the preview window for smooth, flicker-free updates during the generation process.
 
-Start the frontend development server:
-```bash
-cd client
-npm run dev
-```
-
-The app will be available at `http://localhost:5173`.
-
-## Architecture Highlights
-- **Serverless PostgreSQL Adapter:** We utilize Neon's serverless HTTP adapter with Prisma to bypass common Windows/Corporate network firewalls blocking standard PostgreSQL WebSocket/TCP connections.
-- **AI Router Proxy:** We point Hugging Face requests to the stable, load-balanced `router.huggingface.co/v1/chat/completions` API endpoint, enhancing reliability over direct model endpoint calls.
-
-## License
+## 📜 License
 MIT License
