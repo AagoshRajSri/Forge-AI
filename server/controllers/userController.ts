@@ -109,17 +109,8 @@ export const createUserProject = async (req: Request, res: Response) => {
     });
 
     // generate website code
-    const code = await generateWithHF(`
-Generate a production-ready website.
-Return ONLY HTML + Tailwind CSS.
-No explanation text.
-Use Tailwind script: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-User request:
-${enhancedPrompt}
-
-HTML Output:
-    `);
+    const systemPrompt = "You are an expert web developer. Generate a production-ready website based on the user's request. Return ONLY valid HTML with Tailwind CSS classes. No explanations, no markdown formatting outside of the code block. Use Tailwind script: <script src=\"https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4\"></script>";
+    const code = await generateWithHF(enhancedPrompt, systemPrompt);
 
     if (!code) {
       await prisma.conversation.create({
@@ -136,15 +127,46 @@ HTML Output:
       return res.status(500).json({ message: "Failed to generate code" });
     }
 
+    const cleanedCode = code
+      .replace(/```[a-z]*\n?/gi, "")
+      .replace(/```$/g, "")
+      .trim();
+
+    if (!cleanedCode) {
+      await prisma.conversation.create({
+        data: {
+          role: "assistant",
+          content: "The AI failed to generate valid code. Please try a different prompt.",
+          projectId: project.id,
+        },
+      });
+      await prisma.user.update({
+        where: { id: userId },
+        data: { credits: { increment: 5 } },
+      });
+      return res.status(500).json({ message: "Failed to generate valid code (empty response)" });
+    }
+
+    // Ensure main branch exists
+    const branch = await prisma.branch.upsert({
+      where: {
+        projectId_name: { projectId: project.id, name: "main" },
+      },
+      update: {},
+      create: {
+        projectId: project.id,
+        name: "main",
+        isDefault: true,
+      },
+    });
+
     //create version for the project
     const version = await prisma.version.create({
       data: {
-        code: code
-          .replace(/```[a-z]*\n?/gi, "")
-          .replace(/```$/g, "")
-          .trim(),
+        branchId: branch.id,
+        patch: "", // Initial version has no patch
+        fullHtml: cleanedCode,
         description: "Initial Version",
-        projectId: project.id,
       },
     });
 
@@ -160,10 +182,7 @@ HTML Output:
     await prisma.websiteProject.update({
       where: { id: project.id },
       data: {
-        current_code: code
-          .replace(/```[a-z]*\n?/gi, "")
-          .replace(/```$/g, "")
-          .trim(),
+        current_code: cleanedCode,
         current_version_index: version.id,
       },
     });
@@ -194,7 +213,12 @@ export const getUserProject = async (req: Request, res: Response) => {
         conversation: {
           orderBy: { timestamp: "asc" },
         },
-        versions: { orderBy: { timestamp: "asc" } },
+        // Versions are nested under branches — flatten them for the client
+        branches: {
+          include: {
+            versions: { orderBy: { timestamp: "asc" } },
+          },
+        },
       },
     });
 
@@ -202,12 +226,18 @@ export const getUserProject = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    res.json({ project });
+    // Flatten versions from all branches so the client gets a single `versions` array
+    const versions = project.branches.flatMap((b) => b.versions);
+    const { branches: _branches, ...projectData } = project;
+    const response = { ...projectData, versions };
+
+    res.json({ project: response });
   } catch (error: any) {
     console.log(error.code || error.message);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // controller fn to get all user's project
 

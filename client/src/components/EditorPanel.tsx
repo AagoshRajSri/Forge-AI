@@ -45,6 +45,14 @@ const EditorPanel = ({
     onUpdate({ styles: { [styleName]: value } });
   };
 
+  const rgbToHex = (colorString: string) => {
+    if (!colorString) return '#000000';
+    if (colorString.startsWith('#')) return colorString.substring(0, 7);
+    const match = colorString.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (!match) return '#000000'; // Fallback for oklch, named colors, etc.
+    return '#' + match.slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('');
+  };
+
   return (
     <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50 animate-fade-in fade-in">
       <div className="flex justify-between items-center mb-4">
@@ -123,11 +131,7 @@ const EditorPanel = ({
             <div className="flex items-center gap-2 border border-gray-400 rounded-md p-1">
               <input
                 type="color"
-                value={
-                  values.styles.backgroundColor === "rgba(0, 0, 0, 0)"
-                    ? "#ffffff"
-                    : values.styles.backgroundColor
-                }
+                value={rgbToHex(values.styles.backgroundColor)}
                 onChange={(e) =>
                   handleStyleChange("backgroundColor", e.target.value)
                 }
@@ -145,7 +149,7 @@ const EditorPanel = ({
             <div className="flex items-center gap-2 border border-gray-400 rounded-md p-1">
               <input
                 type="color"
-                value={values.styles.color}
+                value={rgbToHex(values.styles.color)}
                 onChange={(e) => handleStyleChange("color", e.target.value)}
                 className="w-6 h-6 cursor-pointer"
               />

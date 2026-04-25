@@ -30,14 +30,19 @@ const Pricing = () => {
 
   return (
     <>
-      <div className="w-full max-w-5xl mx-auto z-20 max-md:px-4 min-h-[80vh]">
-        <div className="text-center mt-16">
-          <h2 className="text-gray-100 text-3xl font-medium">
-            Choose Your Plan
-          </h2>
-          <p className="text-gray-400 text-sm max-w-md mx-auto mt-2">
-            Start for free and scale up as you grow. Find the perfect plan for
-            your content creation needs.
+      <div className="w-full max-w-5xl mx-auto z-20 max-md:px-4 min-h-[80vh] relative pt-24">
+        <div className="text-center mt-20 mb-16 animate-fade-up">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4"
+            style={{
+              background: 'linear-gradient(135deg, var(--signal) 0%, var(--pulse) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 30px rgba(239, 68, 68, 0.2)',
+            }}>
+            SUBSCRIPTION MATRIX
+          </h1>
+          <p className="text-sm max-w-md mx-auto mt-2 tracking-cosmic" style={{ color: 'var(--star-2)' }}>
+            Calibrate your operational capacity. Select a resource tier to maintain system dominance.
           </p>
         </div>
         <div className="pt-14 py-4 px-4 ">
@@ -45,55 +50,59 @@ const Pricing = () => {
             {plans.map((plan, idx) => (
               <div
                 key={idx}
-                className="p-6 bg-black/20 ring ring-indigo-950 mx-auto w-full max-w-sm rounded-lg text-white shadow-lg hover:ring-indigo-500 transition-all duration-400"
+                className="p-8 bg-black/40 backdrop-blur-xl border border-[var(--seam)] mx-auto w-full max-w-sm rounded-lg text-white shadow-2xl hover:border-[var(--signal)] transition-all duration-500 hud-corners holo-input group animate-fade-up"
+                style={{ animationDelay: `${idx * 100}ms` }}
               >
-                <h3 className="text-xl font-bold">{plan.name}</h3>
-                <div className="my-2">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-gray-300">
-                    {" "}
-                    / {plan.credits} credits
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-xs font-mono tracking-widest uppercase opacity-70" style={{ color: 'var(--star-2)' }}>
+                    {plan.name}
+                  </h3>
+                  {idx === 1 && (
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded border border-[var(--signal)] text-[var(--signal)] animate-pulse">
+                      RECOMMENDED
+                    </span>
+                  )}
+                </div>
+                
+                <div className="mb-8">
+                  <span className="text-5xl font-bold tracking-tighter">{plan.price}</span>
+                  <span className="text-xs opacity-50 ml-2 font-mono tracking-tighter">
+                    / {plan.credits} CREDITS
                   </span>
                 </div>
 
-                <p className="text-gray-300 mb-6">{plan.description}</p>
+                <p className="text-xs leading-relaxed mb-8 h-10" style={{ color: 'var(--star-2)' }}>{plan.description}</p>
 
-                <ul className="space-y-1.5 mb-6 text-sm">
+                <ul className="space-y-3 mb-8 text-xs font-mono">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center">
-                      <svg
-                        className="h-5 w-5 text-indigo-300 mr-2"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-gray-400">{feature}</span>
+                    <li key={i} className="flex items-center gap-3">
+                      <div className="size-1.5 rounded-full bg-[var(--signal)] shadow-[0_0_8px_var(--signal)]" />
+                      <span style={{ color: 'var(--star-2)' }}>{feature}</span>
                     </li>
                   ))}
                 </ul>
                 <button
                   onClick={() => handlePurchase(plan.id)}
-                  className="w-full py-2 px-4 bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-sm rounded-md transition-all"
+                  className="w-full py-3 px-4 font-mono tracking-widest text-[10px] uppercase text-white transition-all active:scale-95 hud-corners"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--signal) 0%, var(--pulse) 100%)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    boxShadow: '0 0 20px rgba(239, 68, 68, 0.15)',
+                  }}
                 >
-                  Buy Now
+                  INITIATE_UPGRADE
                 </button>
               </div>
             ))}
           </div>
         </div>
-        <p className="mx-auto text-center text-sm max-w-md mt-10 text-white/60 font-light">
-          Project <span className="text-white">Creation / Revision</span>{" "}
-          consume <span className="text-white">5 credits </span>. You can
-          purchase more credits to create more projects.
-        </p>
+        <div className="mx-auto text-center mt-16 p-6 rounded border border-[var(--seam)] bg-black/20 backdrop-blur-sm max-w-2xl animate-fade-up hud-corners"
+          style={{ animationDelay: '400ms' }}>
+          <p className="text-[10px] font-mono tracking-widest uppercase opacity-60" style={{ color: 'var(--star-2)' }}>
+            OPERATIONAL_DATA: Project <span className="text-[var(--signal)]">Creation / Revision</span>{" "}
+            requires <span className="text-[var(--signal)]">5 units </span> of operational energy.
+          </p>
+        </div>
       </div>
       <Footer />
     </>

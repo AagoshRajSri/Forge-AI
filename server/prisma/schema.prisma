@@ -9,41 +9,90 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String   @id
   name          String
-  email         String    @unique
+  email         String   @unique
   emailVerified Boolean
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
-  
-  sessions      Session[]
-  accounts      Account[]
-  
-  projects      WebsiteProject[]
-  transactions  Transaction[]
-  
-  totalCreation Int       @default(0)
-  credits       Int       @default(20)
+
+  sessions Session[]
+  accounts Account[]
+
+  projects     WebsiteProject[]
+  transactions Transaction[]
+  jobs         JobTracker[]
+
+  totalCreation Int @default(0)
+  credits       Int @default(20)
 
   @@map("user")
 }
 
 model WebsiteProject {
-  id                    String         @id @default(uuid())
-  name                  String
-  initial_prompt        String
-  current_code          String?
-  current_version_index String         @default("")
-  userId                String
-  isPublished           Boolean        @default(false)
-  
-  conversation          Conversation[]
-  versions              Version[]
-  user                  User           @relation(fields: [userId], references: [id])
+  id             String  @id @default(uuid())
+  name           String
+  initial_prompt String
+  userId         String
+  isPublished    Boolean @default(false)
+  current_code   String?
+  current_version_index String? @default("0")
 
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  conversation Conversation[]
+  branches     Branch[]
+  components   Component[]
+  jobs         JobTracker[]
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id        String         @id @default(uuid())
+  name      String         @default("main")
+  isDefault Boolean        @default(false)
+  projectId String
+  project   WebsiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  versions Version[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, name])
+}
+
+model Version {
+  id          String   @id @default(uuid())
+  patch       String // JSON patch or unified diff string
+  fullHtml    String? // Optional snapshot for faster rendering on major versions
+  description String?
+  timestamp   DateTime @default(now())
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  parentId String? // For git-like history
+  parent   Version?  @relation("VersionHistory", fields: [parentId], references: [id])
+  children Version[] @relation("VersionHistory")
+}
+
+model Component {
+  id       String  @id @default(uuid())
+  name     String // e.g., "Hero", "Navbar"
+  code     String // HTML + Tailwind
+  metadata String? // JSON string for specific component properties
+
+  projectId String
+  project   WebsiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, name])
 }
 
 enum Role {
@@ -60,26 +109,56 @@ model Conversation {
   project   WebsiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-model Version {
-  id          String         @id @default(uuid())
-  code        String
-  description String?
-  timestamp   DateTime       @default(now())
-  projectId   String
-  project     WebsiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model JobTracker {
+  id       String    @id @default(uuid())
+  type     String // e.g., "GENERATE_COMPONENT", "PLANNING"
+  status   JobStatus @default(PENDING)
+  progress Int       @default(0)
+  data     String? // Input JSON
+  result   String? // Output JSON
+  error    String? // Error message if failed
+
+  projectId String
+  project   WebsiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TransactionType {
+  TOPUP
+  FULL_PAGE_GEN
+  COMPONENT_EDIT
+  REPAIR
 }
 
 model Transaction {
-  id        String   @id @default(uuid())
-  isPaid    Boolean  @default(false)
-  planId    String
-  amount    Float
-  credits   Int
-  userId    String
+  id         String          @id @default(uuid())
+  type       TransactionType @default(TOPUP)
+  isPaid     Boolean         @default(false) // Relevant for TOPUP
+  planId     String?
+  amount     Float? // Money amount for TOPUP
+  credits    Int // Credits added or subtracted
+  tokensUsed Int? // Track exact LLM token usage
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+// --- Better Auth Models ---
 
 model Session {
   id        String   @id
@@ -115,7 +194,7 @@ model Account {
 }
 
 model Verification {
-  id         String   @id
+  id         String    @id
   identifier String
   value      String
   expiresAt  DateTime

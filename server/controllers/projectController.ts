@@ -30,7 +30,6 @@ export const makeRevision = async (req: Request, res: Response) => {
 
     const currentProject = await prisma.websiteProject.findUnique({
       where: { id: projectId, userId },
-      include: { versions: true },
     });
 
     if (!currentProject) {
@@ -76,20 +75,14 @@ export const makeRevision = async (req: Request, res: Response) => {
     });
 
     // generate website code
+    const systemPrompt = "You are an expert web developer. Update the HTML code based on the user request. Return ONLY the complete updated HTML code with Tailwind CSS classes. No explanations, no markdown formatting outside of the code block. Include the Tailwind CDN script if not present.";
     const code = await generateWithHF(`
-You are an expert web developer. 
-Update the following HTML code based on the user request.
-Return ONLY the complete updated HTML code.
-No explanation text.
-
 Current website code:
 "${currentProject.current_code}"
 
 User request for change:
 "${enhancedPrompt}"
-
-Updated HTML Output:
-    `);
+    `, systemPrompt, "Qwen/Qwen2.5-Coder-7B-Instruct");
 
     if (!code) {
       await prisma.conversation.create({
@@ -106,14 +99,45 @@ Updated HTML Output:
       return res.status(500).json({ message: "Failed to generate code" });
     }
 
+    const cleanedCode = code
+      .replace(/```[a-z]*\n?/gi, "")
+      .replace(/```$/g, "")
+      .trim();
+
+    if (!cleanedCode) {
+      await prisma.conversation.create({
+        data: {
+          role: "assistant",
+          content: "The AI failed to generate valid code. Please try a different prompt.",
+          projectId,
+        },
+      });
+      await prisma.user.update({
+        where: { id: userId },
+        data: { credits: { increment: 5 } },
+      });
+      return res.status(500).json({ message: "Failed to generate valid code (empty response)" });
+    }
+
+    // Ensure main branch exists
+    const branch = await prisma.branch.upsert({
+      where: {
+        projectId_name: { projectId, name: "main" },
+      },
+      update: {},
+      create: {
+        projectId,
+        name: "main",
+        isDefault: true,
+      },
+    });
+
     const version = await prisma.version.create({
       data: {
-        code: code
-          .replace(/```[a-z]*\n?/gi, "")
-          .replace(/```$/g, "")
-          .trim(),
+        branchId: branch.id,
+        patch: "", // For now, storing as full snapshot or handle diffs
+        fullHtml: cleanedCode,
         description: "changes made",
-        projectId,
       },
     });
 
@@ -129,10 +153,7 @@ Updated HTML Output:
     await prisma.websiteProject.update({
       where: { id: projectId },
       data: {
-        current_code: code
-          .replace(/```[a-z]*\n?/gi, "")
-          .replace(/```$/g, "")
-          .trim(),
+        current_code: cleanedCode,
         current_version_index: version.id,
       },
     });
@@ -158,21 +179,21 @@ export const rollbackToVersion = async (req: Request, res: Response) => {
     const { projectId, versionId } = req.params;
     const project = await prisma.websiteProject.findUnique({
       where: { id: projectId, userId },
-      include: { versions: true },
     });
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
-    const version = project.versions.find(
-      (version) => version.id === versionId
-    );
+    // Fetch version directly — versions live under branches
+    const version = await prisma.version.findFirst({
+      where: { id: versionId, branch: { projectId } },
+    });
     if (!version) {
       return res.status(404).json({ message: "Version not found" });
     }
     await prisma.websiteProject.update({
       where: { id: projectId, userId },
       data: {
-        current_code: version.code,
+        current_code: version.fullHtml ?? "",
         current_version_index: version.id,
       },
     });
@@ -223,7 +244,6 @@ export const getProjectPreview = async (req: Request, res: Response) => {
 
     const project = await prisma.websiteProject.findFirst({
       where: { id: projectId, userId },
-      include: { versions: true },
     });
 
     if (!project) {

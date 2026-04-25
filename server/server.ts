@@ -53,6 +53,11 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(port, () => {
+import { WSManager } from "./src/api/websocket/wsManager.js";
+
+const server = app.listen(port, () => {
   console.log(`Server is running at port ${port}`);
 });
+
+// Initialize WebSocket Server
+new WSManager(server);

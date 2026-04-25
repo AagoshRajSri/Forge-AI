@@ -1,12 +1,18 @@
-export const generateWithHF = async (prompt: string) => {
+export const generateWithHF = async (prompt: string, systemPrompt?: string, model: string = "Qwen/Qwen2.5-Coder-32B-Instruct") => {
     // StarCoder v1 is decommissioned on the serverless Inference API.
-    // We use Qwen2.5-Coder-32B-Instruct, which is significantly more powerful for code.
-    const modelName = "Qwen/Qwen2.5-Coder-32B-Instruct";
+    // We use Qwen2.5-Coder-32B-Instruct by default, but allow overriding to 7B for faster revisions.
+    const modelName = model;
 
     // Use the OpenAI-compatible router endpoint which is robust and supports chat models.
     const url = `https://router.huggingface.co/v1/chat/completions`;
 
     console.log(`Generating code using model: ${modelName}`);
+
+    const messages: any[] = [];
+    if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+    }
+    messages.push({ role: "user", content: prompt });
 
     const response = await fetch(url, {
         method: "POST",
@@ -16,14 +22,9 @@ export const generateWithHF = async (prompt: string) => {
         },
         body: JSON.stringify({
             model: modelName,
-            messages: [
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            max_tokens: 1500,
-            temperature: 0.1,
+            messages,
+            max_tokens: 4000,
+            temperature: 0.2,
         }),
     });
 
