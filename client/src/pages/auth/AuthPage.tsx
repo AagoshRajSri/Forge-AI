@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { AuthView } from "@daveyplate/better-auth-ui";
+// Forced refresh for Vercel build
 
 export default function AuthPage() {
   const { pathname } = useLocation();
