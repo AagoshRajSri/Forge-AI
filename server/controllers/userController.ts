@@ -338,7 +338,7 @@ export const purchaseCredits = async (req: Request, res: Response) => {
             product_data: {
               name: `AiSiteBuilder - ${plan.credits} credits`,
             },
-            unit_amount: Math.floor(transaction.amount) * 100,
+            unit_amount: Math.floor((transaction.amount ?? 0) * 100),
           },
           quantity: 1,
         },
