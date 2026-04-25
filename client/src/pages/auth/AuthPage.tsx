@@ -83,7 +83,6 @@ export default function AuthPage() {
                 title: "text-lg font-bold tracking-tight text-white uppercase font-mono",
                 description: "text-[10px] font-mono opacity-50 text-[var(--star-2)]",
                 content: "px-8 pb-8",
-                label: "text-[10px] font-mono tracking-widest uppercase opacity-70 text-[var(--star-1)] mb-1.5",
                 input: "bg-black/40 border-[var(--seam)] text-sm font-mono focus:border-[var(--signal)] focus:ring-[var(--signal-dim)] rounded-none h-12",
                 button: "bg-[linear-gradient(135deg,var(--signal),var(--pulse))] hover:opacity-90 active:scale-95 text-[10px] font-mono tracking-widest uppercase text-white rounded-none h-12 border border-[rgba(239,68,68,0.3)] shadow-[0_0_15px_rgba(239,68,68,0.15)]",
                 footer: "bg-black/20 border-t border-[var(--seam)] p-8 text-[10px] font-mono tracking-tighter text-center",
