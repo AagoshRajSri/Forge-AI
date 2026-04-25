@@ -43,7 +43,7 @@ export class WSManager {
   }
 
   private subscribeToJobUpdates() {
-    this.redisSubscriber.subscribe("job:updates", (err: Error | null) => {
+    this.redisSubscriber.subscribe("job:updates", (err: any) => {
       if (err) console.error("Redis Pub/Sub error:", err);
     });
 
