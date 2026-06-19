@@ -50,7 +50,7 @@ app.get("/health", (_req: Request, res: Response) => {
 
 // ── Production: serve client build + SPA fallback ─────────────────
 if (process.env.NODE_ENV === "production") {
-  const clientDir = path.join(__dirname, "../client/dist");
+  const clientDir = path.join(__dirname, "../../client/dist");
   app.use(express.static(clientDir));
   app.get("/{*splat}", (_req: Request, res: Response) => {
     res.sendFile(path.join(clientDir, "index.html"));
