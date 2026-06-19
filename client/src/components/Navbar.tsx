@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { UserButton } from "@daveyplate/better-auth-ui";
 import api from "@/configs/axios";
-import { Zap } from "lucide-react";
+import { Search, Coins } from "lucide-react";
+
+const NAV_LINKS = [
+  { to: "/models", label: "Models" },
+  { to: "/workflows", label: "Workflows" },
+  { to: "/deployments", label: "Deployments" },
+  { to: "/monitoring", label: "Monitoring" },
+];
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [credits, setCredits] = useState(0);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const { data: session } = authClient.useSession();
@@ -22,135 +30,99 @@ const Navbar = () => {
     if (session?.user) getCredits();
   }, [session?.user]);
 
+  const isActive = (to: string) => {
+    if (to === "/") return location.pathname === "/";
+    return location.pathname.startsWith(to);
+  };
+
   return (
     <>
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16"
-        style={{
-          background: 'rgba(5, 7, 10, 0.7)',
-          backdropFilter: 'blur(12px)',
-          clipPath: 'polygon(0 0, 100% 0, 100% 75%, 98% 100%, 2% 100%, 0 75%)',
-          borderBottom: '1px solid var(--signal-dim)',
-        }}
-      >
-        {/* Hexagonal Grid Overlay */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{
-            backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="49" viewBox="0 0 28 49"><path d="M13.9 49L0 41.1V25.2l13.9-7.9L27.8 25.2v15.9L13.9 49zM0 15.9V0l13.9 7.9L27.8 0v15.9l-13.9 7.9L0 15.9z" fill="none" stroke="red" stroke-width="1"/></svg>')`,
-            backgroundSize: '14px 24.5px'
-          }} />
-
-        {/* Scrolling Hex Telemetry (Top Edge) */}
-        <div className="absolute top-0 left-0 right-0 h-4 overflow-hidden opacity-20 pointer-events-none border-b border-[var(--seam)] bg-black/40">
-          <div className="flex animate-marquee whitespace-nowrap text-[7px] font-mono tracking-[0.3em] text-[var(--signal)] py-0.5">
-            {Array(10).fill("46 4F 52 47 45 5F 4D 41 54 52 49 58 5F 53 59 53 54 45 4D 5F 4F 4E 4C 49 4E 45 5F 56 34 2E 32 2E 30 20 ").join("")}
-          </div>
-        </div>
-        
-        {/* Inner alignment container */}
-        <div className="w-full flex items-center justify-between px-10 h-full relative mt-3">
-          {/* Telemetry Indicator (Left) */}
-          <div className="hidden 2xl:flex items-center gap-6 opacity-40 pointer-events-none">
-            <div className="flex flex-col">
-              <span className="text-[7px] font-mono text-[var(--signal)] uppercase">Kernel_Load</span>
-              <div className="w-16 h-1 bg-black/40 rounded-full overflow-hidden border border-[var(--seam)] mt-0.5">
-                <div className="h-full bg-[var(--signal)] animate-pulse w-[42%]" />
-              </div>
-            </div>
-            <div className="h-8 w-px bg-[var(--seam)]" />
-            <div className="flex flex-col">
-              <span className="text-[7px] font-mono text-[var(--star-2)] uppercase">Buffer_State</span>
-              <span className="text-[10px] font-mono text-white animate-pulse">OPTIMIZED</span>
-            </div>
-          </div>
-
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center h-16 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div className="w-full flex items-center justify-between px-6 md:px-10 h-full max-w-[1400px] mx-auto">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="size-6 rounded-sm flex items-center justify-center flex-shrink-0 transition-all group-hover:shadow-[0_0_10px_rgba(239, 68, 68,0.4)]"
-              style={{ background: 'linear-gradient(135deg, var(--signal) 0%, var(--pulse) 100%)' }}>
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                <path d="M2 10L7 4L12 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span 
-              className="text-sm font-semibold tracking-cosmic" 
-              style={{ color: 'var(--star-1)' }}
-            >
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-xl font-bold tracking-tight text-[#E040A0]">
               FORGE
             </span>
           </Link>
 
           {/* Nav Links */}
-          <div className="hidden md:flex items-center gap-1 bg-black/20 p-1 rounded border border-[var(--seam)] backdrop-blur-md">
-            {[
-              { to: "/", label: "HOME" },
-              { to: "/projects", label: "PROJECTS" },
-              { to: "/community", label: "COLLECTIVE" },
-              { to: "/pricing", label: "MATRIX" },
-            ].map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className="relative group px-4 py-1.5 text-[10px] font-mono tracking-[0.2em] transition-all hover:text-[var(--star-1)]"
-                style={{ color: 'var(--star-2)' }}
-              >
-                <span className="relative z-10">{label}</span>
-                <div className="absolute inset-0 bg-[var(--signal-dim)] opacity-0 group-hover:opacity-100 transition-opacity rounded-sm" />
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-[var(--signal)] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-              </Link>
-            ))}
+          <div className="hidden md:flex items-center gap-8 ml-8">
+            {NAV_LINKS.map(({ to, label }) => {
+              const active = isActive(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`relative text-sm font-medium transition-colors pb-1 ${
+                    active ? "text-[#E040A0]" : "text-slate-600 hover:text-[#E040A0]"
+                  }`}
+                >
+                  {label}
+                  {/* Active underline with smooth transition */}
+                  <span
+                    className="absolute bottom-0 left-0 h-0.5 bg-[#E040A0] rounded-full transition-all duration-300"
+                    style={{ width: active ? "100%" : "0%" }}
+                  />
+                </Link>
+              );
+            })}
           </div>
 
+          <div className="flex-1" />
+
           {/* Right Section */}
-          <div className="flex items-center gap-4 relative">
-            {/* Telemetry Indicator (Right) */}
-            <div className="hidden lg:flex items-center gap-3 mr-4 opacity-30 text-[8px] font-mono pointer-events-none">
-              <span className="animate-pulse text-[var(--signal)]">●</span>
-              <span>UPLINK_STABLE</span>
+          <div className="flex items-center gap-4">
+            {/* Search Bar */}
+            <div className="hidden lg:flex items-center bg-slate-100 rounded-full px-4 py-2 w-64 border border-transparent focus-within:border-[#E040A0]/30 focus-within:bg-white transition-all">
+              <Search className="w-4 h-4 text-slate-400 mr-2" />
+              <input
+                type="text"
+                placeholder="Search resources..."
+                className="bg-transparent border-none outline-none text-sm w-full text-slate-700 placeholder:text-slate-400"
+              />
             </div>
 
             {!session?.user ? (
-              <div className="flex items-center gap-3">
-                <Link 
+              <div className="flex items-center gap-4 ml-4">
+                <Link
                   to="/auth/signin"
-                  className="text-[10px] font-mono tracking-widest text-[var(--star-2)] hover:text-[var(--signal)] transition-colors"
+                  className="text-sm font-medium text-slate-600 hover:text-[#E040A0] transition-colors"
                 >
-                  SIGN_IN
+                  Sign in
                 </Link>
                 <button
                   onClick={() => navigate("/auth/signup")}
-                  className="px-4 py-2 text-[10px] font-mono tracking-[0.2em] text-white transition-all active:scale-95 hud-corners"
-                  style={{ 
-                    background: 'linear-gradient(135deg, var(--signal), var(--pulse))', 
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    boxShadow: '0 0 15px rgba(239, 68, 68, 0.15)'
-                  }}
+                  className="px-5 py-2 text-sm font-medium text-white bg-[#E040A0] hover:bg-[#c9328d] transition-colors rounded-full shadow-[0_4px_14px_0_rgba(224,64,160,0.39)] hover:shadow-[0_6px_20px_rgba(224,64,160,0.23)]"
                 >
-                  INITIATE_PROTOCOL
+                  Initiate Protocol
                 </button>
               </div>
             ) : (
-              <>
-                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border"
-                  style={{ color: 'var(--star-2)', borderColor: 'var(--seam)', background: 'var(--space)' }}>
-                  <Zap className="size-2.5" style={{ color: 'var(--signal)' }} />
-                  <span className="font-mono tracking-cosmic">{credits}</span>
+              <div className="flex items-center gap-4 ml-4">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-100 text-xs font-bold text-[#E040A0] shadow-[0_2px_8px_rgba(224,64,160,0.05)]">
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>{credits} Credits</span>
                 </div>
-                <UserButton size="icon" />
-              </>
+                <button
+                  onClick={() => navigate("/")}
+                  className="hidden md:block px-5 py-2 text-sm font-medium text-white bg-[#E040A0] hover:bg-[#c9328d] transition-colors rounded-full shadow-[0_4px_14px_0_rgba(224,64,160,0.39)] hover:shadow-[0_6px_20px_rgba(224,64,160,0.23)]"
+                >
+                  Initiate Protocol
+                </button>
+                <UserButton />
+              </div>
             )}
 
             <button
-              className="md:hidden p-1.5 rounded"
+              className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
               onClick={() => setMenuOpen(v => !v)}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {menuOpen ? (
-                  <>
-                    <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </>
+                  <path d="M18 6L6 18M6 6l12 12"/>
                 ) : (
-                  <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M3 12h18M3 6h18M3 18h18"/>
                 )}
               </svg>
             </button>
@@ -160,22 +132,32 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden pt-13 flex flex-col"
-          style={{ background: 'rgba(5, 7, 10, 0.96)', backdropFilter: 'blur(20px)' }}>
-          <div className="divider" />
-          <div className="flex flex-col p-4 gap-1">
-            {[
-              { to: "/", label: "Home" },
-              { to: "/projects", label: "Projects" },
-              { to: "/community", label: "Community" },
-              { to: "/pricing", label: "Pricing" },
-            ].map(({ to, label }) => (
+        <div className="fixed inset-0 z-40 md:hidden pt-16 bg-white border-b border-slate-200">
+          <div className="flex flex-col p-4">
+            <div className="flex items-center bg-slate-100 rounded-lg px-4 py-3 mb-4">
+              <Search className="w-5 h-5 text-slate-400 mr-2" />
+              <input
+                type="text"
+                placeholder="Search resources..."
+                className="bg-transparent border-none outline-none text-base w-full text-slate-700"
+              />
+            </div>
+            
+            {session?.user && (
+              <div className="flex items-center gap-2 px-4 py-3 mb-4 bg-pink-50 rounded-xl border border-pink-100">
+                <Coins className="w-4 h-4 text-[#E040A0]" />
+                <span className="text-sm font-bold text-[#E040A0]">{credits} Credits remaining</span>
+              </div>
+            )}
+
+            {NAV_LINKS.map(({ to, label }) => (
               <Link
                 key={to}
                 to={to}
                 onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm rounded tracking-cosmic transition-colors hover:text-[var(--signal)]"
-                style={{ color: 'var(--star-2)' }}
+                className={`px-4 py-4 text-base font-medium border-b border-slate-100 transition-colors ${
+                  isActive(to) ? "text-[#E040A0]" : "text-slate-700"
+                }`}
               >
                 {label}
               </Link>
@@ -183,6 +165,7 @@ const Navbar = () => {
           </div>
         </div>
       )}
+
     </>
   );
 };

@@ -76,6 +76,14 @@ export const createUserProject = async (req: Request, res: Response) => {
       },
     });
 
+    await prisma.transaction.create({
+      data: {
+        userId,
+        type: "FULL_PAGE_GEN",
+        credits: -5,
+      },
+    });
+
     // enhance user prompt
     const enhancedPrompt = await generateWithHF(`
     You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
@@ -164,7 +172,7 @@ export const createUserProject = async (req: Request, res: Response) => {
     const version = await prisma.version.create({
       data: {
         branchId: branch.id,
-        patch: "", // Initial version has no patch
+        patch: "",
         fullHtml: cleanedCode,
         description: "Initial Version",
       },
@@ -189,10 +197,12 @@ export const createUserProject = async (req: Request, res: Response) => {
 
     res.json({ projectId: project.id });
   } catch (error: any) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { credits: { increment: 5 } },
-    });
+    if (userId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { credits: { increment: 5 } },
+      }).catch(() => {}); // best-effort refund
+    }
     console.log(error);
     res.status(500).json({ message: error.message });
   }
@@ -313,13 +323,17 @@ export const purchaseCredits = async (req: Request, res: Response) => {
     const origin = req.headers.origin as string;
     const plan: Plan = plans[planId];
 
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     if (!plan) {
       return res.status(400).json({ message: "Plan not found" });
     }
 
     const transaction = await prisma.transaction.create({
       data: {
-        userId: userId!,
+        userId,
         planId: req.body.planId,
         amount: plan.amount,
         credits: plan.credits,
@@ -351,6 +365,22 @@ export const purchaseCredits = async (req: Request, res: Response) => {
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     });
     res.json({ payment_link: session.url });
+  } catch (error: any) {
+    console.log(error.code || error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getUserProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    res.json({ user });
   } catch (error: any) {
     console.log(error.code || error.message);
     res.status(500).json({ message: error.message });

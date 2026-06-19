@@ -9,50 +9,66 @@
    HOLOGRAPHIC AI SYSTEM — "JARVIS" PROTOCOL
    Philosophy: Cinematic HUD, thin lines, precision targeting, high tech
 ═══════════════════════════════════════════════════════════════════ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* GSAP page transition optimization */
+[data-page] {
+  will-change: opacity, transform;
+}
+
 :root {
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /* ── Deep Tech Palette ─────────────────────────────────────────── */
-  --void:       #0A0202;   /* deep crimson abyss */
-  --space:      #0F0303;
-  --nebula:     #1A0505;
-  --hull:       #290808;
+  /* ── Joyful Pop Palette ─────────────────────────────────────────── */
+  --void:       #ffffff;   /* clean white background */
+  --space:      #f8fafc;   /* slate-50 */
+  --nebula:     #f1f5f9;   /* slate-100 */
+  --hull:       #e2e8f0;   /* slate-200 */
 
-  /* ── Energy Lines (HUD wires) ──────────────────────────────────── */
-  --seam:       rgba(239, 68, 68, 0.15);
-  --seam-glow:  rgba(239, 68, 68, 0.35);
-  --seam-focus: rgba(239, 68, 68, 0.60);
+  /* ── Glassmorphic Edges ──────────────────────────────────── */
+  --seam:       rgba(226, 232, 240, 0.8);
+  --seam-glow:  rgba(224, 64, 160, 0.2);
+  --seam-focus: rgba(224, 64, 160, 0.4);
 
-  /* ── Data Streams (Text) ───────────────────────────────────────── */
-  --star-1:    #FEF2F2;   /* high contrast ice-white */
-  --star-2:    #FCA5A5;   /* secondary telemetry */
-  --star-3:    #991B1B;   /* low priority readout */
+  /* ── Text ───────────────────────────────────────── */
+  --star-1:    #0f172a;   /* slate-900 */
+  --star-2:    #475569;   /* slate-600 */
+  --star-3:    #94a3b8;   /* slate-400 */
 
   /* ── Core Energy Accents ───────────────────────────────────────── */
-  --signal:        #EF4444;          /* bright crimson */
-  --signal-dim:    rgba(239, 68, 68, 0.12);
-  --signal-glow:   rgba(239, 68, 68, 0.40);
-  --pulse:         #F59E0B;          /* amber/orange plasma */
-  --danger:        rgba(239, 68, 68, 0.85); /* amber/red alerts */
+  --signal:        #E040A0;          /* vibrant magenta */
+  --signal-dim:    rgba(224, 64, 160, 0.1);
+  --signal-glow:   rgba(224, 64, 160, 0.3);
+  --pulse:         #f472b6;          /* pink-400 */
+  --danger:        #ef4444;          /* red-500 */
 
   /* ── Geometry ───────────────────────────────────────────────────── */
-  --radius:    2px;       /* sharper edges for HUD */
-  --radius-sm: 0px;
-  --radius-lg: 4px;
+  --radius:    12px;       /* soft, friendly curves */
+  --radius-sm: 8px;
+  --radius-lg: 16px;
 
   /* ── Shadcn compat ──────────────────────────────────────────────── */
   --background:          var(--void);
   --foreground:          var(--star-1);
-  --card:                var(--space);
+  --card:                var(--void);
   --card-foreground:     var(--star-1);
-  --popover:             var(--nebula);
+  --popover:             var(--void);
   --popover-foreground:  var(--star-1);
   --primary:             var(--signal);
   --primary-foreground:  #ffffff;
-  --secondary:           var(--nebula);
+  --secondary:           var(--space);
   --secondary-foreground:var(--star-1);
-  --muted:               var(--nebula);
+  --muted:               var(--space);
   --muted-foreground:    var(--star-2);
   --accent:              var(--signal-dim);
   --accent-foreground:   var(--signal);
@@ -72,7 +88,7 @@
   --c-text-2:       var(--star-2);
   --c-text-3:       var(--star-3);
   --c-accent:       var(--signal);
-  --c-accent-hover: #4a8fd8;
+  --c-accent-hover: #d946ef;
   --c-accent-muted: var(--signal-dim);
 }
 
@@ -121,9 +137,10 @@ button, a, [role="button"] {
   outline-offset: 3px;
   box-shadow: 0 0 10px var(--signal-dim);
 }
+input:focus, textarea:focus,
 input:focus-visible, textarea:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.15), 0 0 0 1px var(--signal);
+  box-shadow: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

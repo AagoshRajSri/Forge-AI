@@ -1,37 +1,37 @@
-export interface User {
-    id: string;
-    email: string;
-    fullName?: string;
-    imageUrl?: string;
-    name?: string;
-    image?: string;
+export interface Project {
+  id: string;
+  name: string;
+  initial_prompt: string;
+  current_code?: string;
+  current_version_index?: string;
+  isPublished: boolean;
+  user: User;
+  createdAt: string;
+  updatedAt: string;
+  conversation?: Message[];
+  versions?: Version[];
 }
 
-export interface Message {
-    id: string;
-    role: any;
-    content: string;
-    timestamp: string;
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  image?: string;
+  credits: number;
 }
 
 export interface Version {
-    id: string;
-    timestamp: string;
-    code: string;
+  id: string;
+  patch: string;
+  fullHtml?: string;
+  timestamp: string;
+  branchId: string;
 }
 
-export interface Project {
-    id: string;
-    name: string;
-    initial_prompt: string;
-    current_code: string;
-    createdAt: string;
-    updatedAt: string;
-    userId: string;
-    user?: User;
-    isPublished?: boolean;
-    versionId?: string;
-    conversation: Message[];
-    versions: Version[];
-    current_version_index: string;
+export interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  projectId: string;
 }

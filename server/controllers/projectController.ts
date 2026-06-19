@@ -10,11 +10,20 @@ export const makeRevision = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { message } = req.body;
 
+    // Auth guard first — before any DB call
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!message || message.trim() === "") {
+      return res.status(400).json({ message: "Please enter a valid prompt" });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
 
-    if (!userId || !user) {
+    if (!user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -22,10 +31,6 @@ export const makeRevision = async (req: Request, res: Response) => {
       return res
         .status(403)
         .json({ message: "add more credits to make changes" });
-    }
-
-    if (!message || message.trim() === "") {
-      return res.status(400).json({ message: "Please enter a valid prompt" });
     }
 
     const currentProject = await prisma.websiteProject.findUnique({
@@ -48,6 +53,14 @@ export const makeRevision = async (req: Request, res: Response) => {
       where: { id: userId },
       data: {
         credits: { decrement: 5 },
+      },
+    });
+
+    await prisma.transaction.create({
+      data: {
+        userId,
+        type: "COMPONENT_EDIT",
+        credits: -5,
       },
     });
 
@@ -75,13 +88,27 @@ export const makeRevision = async (req: Request, res: Response) => {
     });
 
     // generate website code
-    const systemPrompt = "You are an expert web developer. Update the HTML code based on the user request. Return ONLY the complete updated HTML code with Tailwind CSS classes. No explanations, no markdown formatting outside of the code block. Include the Tailwind CDN script if not present.";
+    const systemPrompt = `You are a world-class UI/UX designer and senior frontend engineer who creates breathtaking, premium websites.
+
+You are making a targeted change to an existing website. CRITICAL RULES:
+- Return ONLY the complete, updated HTML document — no explanations, no markdown fences
+- Preserve all existing design quality, animations, and styling unless the user asks to change them
+- When adding new elements, match the existing design language perfectly
+- If adding new sections: use glassmorphism cards, smooth hover transitions, and rich gradients
+- Include all existing CDN scripts (Tailwind, GSAP, Google Fonts) in the output
+- Make the requested change precise, polished, and visually stunning
+- Add or enhance CSS animations where appropriate
+
+The updated website must look premium and award-winning.`;
+
     const code = await generateWithHF(`
 Current website code:
 "${currentProject.current_code}"
 
 User request for change:
 "${enhancedPrompt}"
+
+Return the COMPLETE updated HTML document only.
     `, systemPrompt, "Qwen/Qwen2.5-Coder-7B-Instruct");
 
     if (!code) {
@@ -135,9 +162,15 @@ User request for change:
     const version = await prisma.version.create({
       data: {
         branchId: branch.id,
-        patch: "", // For now, storing as full snapshot or handle diffs
+        patch: "",
         fullHtml: cleanedCode,
         description: "changes made",
+        // Only set parentId if it's a real UUID (not the "0" default or empty)
+        parentId:
+          currentProject.current_version_index &&
+          currentProject.current_version_index !== "0"
+            ? currentProject.current_version_index
+            : undefined,
       },
     });
 
@@ -160,10 +193,12 @@ User request for change:
 
     res.json({ message: "Changes made successfully" });
   } catch (error: any) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { credits: { increment: 5 } },
-    });
+    if (userId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { credits: { increment: 5 } },
+      }).catch(() => {}); // best-effort refund
+    }
     console.log(error.code || error.message);
     res.status(500).json({ message: error.message });
   }
@@ -219,6 +254,10 @@ export const deleteProject = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
     const { projectId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     await prisma.websiteProject.delete({
       where: { id: projectId, userId },
@@ -332,7 +371,7 @@ export const saveProjectCode = async (req: Request, res: Response) => {
       where: { id: projectId },
       data: {
         current_code: code,
-        current_version_index: "",
+        // Keep current_version_index — manual edits don't create a new version
       },
     });
 

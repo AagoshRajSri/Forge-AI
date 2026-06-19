@@ -2,18 +2,46 @@ import { WebSocketServer, WebSocket } from "ws";
 import { Server, IncomingMessage } from "http";
 import { Redis } from "ioredis";
 
+// Singleton instance — allows publishJobUpdate to broadcast directly in-process
+let instance: WSManager | null = null;
+
+function createRedis(url: string): Redis {
+  const client = new Redis(url, {
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false, // Don't queue commands when disconnected
+    retryStrategy: (times: number) => {
+      if (times > 3) return null; // Give up, fall back to in-process broadcast
+      return Math.min(times * 1000, 5000);
+    },
+  });
+  // Suppress all ioredis error noise — retryStrategy handles reconnection
+  client.on("error", () => {});
+  return client;
+}
+
 export class WSManager {
   private wss: WebSocketServer;
   private clients: Map<string, Set<WebSocket>> = new Map();
-  private redisSubscriber: Redis;
+  private redisSubscriber: Redis | null = null;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server, path: "/ws" });
-    // @ts-ignore - ioredis constructor can be finicky in ESM + TS
-    this.redisSubscriber = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
-    
+    instance = this;
+
+    // Only attempt Redis if REDIS_URL is explicitly configured
+    const redisUrl = process.env.REDIS_URL;
+    if (redisUrl) {
+      const subscriber = createRedis(redisUrl);
+      subscriber.on("ready", () => {
+        console.log("[Redis] Pub/Sub connected.");
+        this.redisSubscriber = subscriber;
+        this.subscribeToJobUpdates();
+      });
+    } else {
+      console.log("[WS] No REDIS_URL — using in-process broadcast (single-process mode).");
+    }
+
     this.init();
-    this.subscribeToJobUpdates();
   }
 
   private init() {
@@ -30,7 +58,6 @@ export class WSManager {
         this.clients.set(projectId, new Set());
       }
       this.clients.get(projectId)?.add(ws);
-
       console.log(`[WS] Client connected to project: ${projectId}`);
 
       ws.on("close", () => {
@@ -43,25 +70,23 @@ export class WSManager {
   }
 
   private subscribeToJobUpdates() {
-    this.redisSubscriber.subscribe("job:updates", (err: any) => {
-      if (err) console.error("Redis Pub/Sub error:", err);
+    if (!this.redisSubscriber) return;
+
+    this.redisSubscriber.subscribe("job:updates", (err: Error | null | undefined) => {
+      if (err) console.error("[Redis] Subscribe error:", err.message);
     });
 
-    this.redisSubscriber.on("message", (channel: string, message: string) => {
-      if (channel === "job:updates") {
-        try {
-          const data = JSON.parse(message);
-          const { projectId, jobId, status, progress } = data;
-          
-          this.broadcastToProject(projectId, "job:update", { jobId, status, progress });
-        } catch (e) {
-          console.error("Failed to parse pub/sub message", e);
-        }
+    this.redisSubscriber.on("message", (_channel: string, message: string) => {
+      try {
+        const { projectId, jobId, status, progress } = JSON.parse(message);
+        this.broadcastToProject(projectId, "job:update", { jobId, status, progress });
+      } catch (e) {
+        console.error("[WS] Failed to parse pub/sub message:", e);
       }
     });
   }
 
-  private broadcastToProject(projectId: string, event: string, payload: any) {
+  broadcastToProject(projectId: string, event: string, payload: unknown) {
     const clients = this.clients.get(projectId);
     if (!clients) return;
 
@@ -73,10 +98,30 @@ export class WSManager {
     }
   }
 
-  static async publishJobUpdate(projectId: string, jobId: string, status: string, progress: number) {
-    // @ts-ignore
-    const redisPublisher = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
-    await redisPublisher.publish("job:updates", JSON.stringify({ projectId, jobId, status, progress }));
-    redisPublisher.disconnect();
+  static async publishJobUpdate(
+    projectId: string,
+    jobId: string,
+    status: string,
+    progress: number
+  ) {
+    const payload = { jobId, status, progress };
+
+    // In-process broadcast (works in single-process / dev)
+    if (instance) {
+      instance.broadcastToProject(projectId, "job:update", payload);
+    }
+
+    // Also publish via Redis for multi-process / horizontal scaling
+    const redisUrl = process.env.REDIS_URL;
+    if (redisUrl) {
+      const publisher = createRedis(redisUrl);
+      try {
+        await publisher.publish("job:updates", JSON.stringify({ projectId, ...payload }));
+      } catch {
+        // Redis publish failed — in-process broadcast above already handled it
+      } finally {
+        publisher.disconnect();
+      }
+    }
   }
 }

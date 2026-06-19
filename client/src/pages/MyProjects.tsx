@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Project } from "../types";
-import { PlusIcon, TrashIcon, ExternalLinkIcon, GridIcon } from "lucide-react";
+import { PlusIcon, TrashIcon, ExternalLinkIcon, LayoutGrid } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/configs/axios";
 import { toast } from "sonner";
@@ -25,11 +25,11 @@ const MyProjects = () => {
 
   const deleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (!confirm("Terminate this project? Action is irreversible.")) return;
+    if (!confirm("Delete this project? This action is irreversible.")) return;
     try {
       await api.delete(`/api/project/${projectId}`);
       setProjects(ps => ps.filter(p => p.id !== projectId));
-      toast.success("Project terminated");
+      toast.success("Project deleted");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error.message);
     }
@@ -40,47 +40,49 @@ const MyProjects = () => {
   }, [session?.user, fetchProjects]);
 
   return (
-    <div className="min-h-screen pt-13" style={{ background: 'transparent' }}>
-      <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-slate-50 pt-24 pb-20 relative overflow-hidden">
+      {/* Ambient glows */}
+      <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-pink-100/30 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-blue-50/30 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
 
         {/* ── Header ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between mb-10">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <GridIcon className="size-3.5" style={{ color: 'var(--signal)' }} />
-              <span className="text-[10px] font-mono tracking-cosmic uppercase" style={{ color: 'var(--signal)' }}>
-                Mission Control
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 bg-[#E040A0] rounded-lg flex items-center justify-center shadow-[0_4px_12px_rgba(224,64,160,0.3)]">
+                <LayoutGrid className="size-3.5 text-white" />
+              </div>
+              <span className="text-xs font-bold tracking-widest text-[#E040A0] uppercase">
+                My Projects
               </span>
             </div>
-            <h1 className="text-xl font-semibold" style={{ color: 'var(--star-1)' }}>Projects</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900">All Builds</h1>
             {!loading && (
-              <p className="text-xs font-mono tracking-cosmic mt-0.5" style={{ color: 'var(--star-3)' }}>
-                {projects.length} {projects.length === 1 ? 'mission' : 'missions'} logged
+              <p className="text-sm text-slate-400 mt-1">
+                {projects.length} {projects.length === 1 ? "project" : "projects"} created
               </p>
             )}
           </div>
           <button
             onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono tracking-cosmic rounded text-white transition-all hover:shadow-[0_0_14px_rgba(239, 68, 68,0.25)] active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, var(--signal), var(--pulse))',
-              border: '1px solid rgba(239, 68, 68,0.3)',
-            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl text-white bg-[#E040A0] hover:bg-[#c9328d] shadow-[0_4px_14px_rgba(224,64,160,0.3)] transition-all active:scale-[0.98]"
           >
-            <PlusIcon className="size-3.5" />
-            NEW MISSION
+            <PlusIcon className="size-4" />
+            New Project
           </button>
         </div>
 
         {/* ── Loading skeletons ─────────────────────────────────── */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--seam)', background: 'var(--space)' }}>
-                <div className="skeleton h-44" style={{ opacity: 0.4 }} />
+              <div key={i} className="rounded-2xl overflow-hidden bg-white border border-slate-100 animate-pulse">
+                <div className="h-44 bg-slate-100" />
                 <div className="p-4 flex flex-col gap-2.5">
-                  <div className="skeleton h-3 rounded" style={{ width: '65%', opacity: 0.5 }} />
-                  <div className="skeleton h-2.5 rounded" style={{ width: '40%', opacity: 0.3 }} />
+                  <div className="h-3 bg-slate-100 rounded" style={{ width: '65%' }} />
+                  <div className="h-2.5 bg-slate-100 rounded" style={{ width: '40%' }} />
                 </div>
               </div>
             ))}
@@ -89,57 +91,35 @@ const MyProjects = () => {
 
         {/* ── Empty state ───────────────────────────────────────── */}
         {!loading && projects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-36">
-            <div
-              className="size-14 rounded-lg mb-5 flex items-center justify-center hud-corners"
-              style={{
-                background: 'var(--signal-dim)',
-                border: '1px solid var(--seam-glow)',
-              }}
-            >
-              <GridIcon className="size-5" style={{ color: 'var(--signal)' }} />
+          <div className="flex flex-col items-center justify-center py-32 text-center">
+            <div className="w-20 h-20 bg-pink-50 rounded-3xl flex items-center justify-center mb-6 border border-pink-100">
+              <LayoutGrid className="size-9 text-[#E040A0]" />
             </div>
-            <p className="text-sm font-medium mb-1.5" style={{ color: 'var(--star-1)' }}>No missions yet</p>
-            <p className="text-xs mb-6 font-mono tracking-cosmic" style={{ color: 'var(--star-3)' }}>
-              Begin your first build sequence
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">No projects yet</h2>
+            <p className="text-slate-500 max-w-sm mb-8">
+              Start building your first AI-powered website in seconds.
             </p>
             <button
               onClick={() => navigate("/")}
-              className="px-5 py-2 text-xs font-mono tracking-cosmic rounded text-white transition-all hover:shadow-[0_0_14px_rgba(239, 68, 68,0.25)]"
-              style={{
-                background: 'linear-gradient(135deg, var(--signal), var(--pulse))',
-                border: '1px solid rgba(239, 68, 68,0.3)',
-              }}
+              className="px-6 py-3 text-sm font-bold rounded-xl text-white bg-[#E040A0] hover:bg-[#c9328d] shadow-[0_4px_14px_rgba(224,64,160,0.3)] transition-all"
             >
-              INITIALIZE MISSION
+              Create First Project
             </button>
           </div>
         )}
 
         {/* ── Project grid ─────────────────────────────────────── */}
         {!loading && projects.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {projects.map((project, idx) => (
               <div
                 key={project.id}
                 onClick={() => navigate(`/projects/${project.id}`)}
-                className="group relative rounded-lg overflow-hidden cursor-pointer transition-all duration-200 hud-corners"
-                style={{
-                  background: 'var(--space)',
-                  border: '1px solid var(--seam)',
-                  animationDelay: `${idx * 40}ms`,
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--seam-glow)';
-                  (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(239, 68, 68,0.06)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--seam)';
-                  (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-                }}
+                className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 bg-white border border-slate-100 hover:border-pink-100 hover:shadow-[0_8px_30px_rgba(224,64,160,0.07)] shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
+                style={{ animationDelay: `${idx * 40}ms` }}
               >
                 {/* Thumbnail viewport */}
-                <div className="relative h-44 overflow-hidden" style={{ background: 'var(--void)' }}>
+                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-slate-50">
                   {project.current_code ? (
                     <iframe
                       srcDoc={project.current_code}
@@ -156,53 +136,45 @@ const MyProjects = () => {
                     />
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2">
-                      <span className="animate-signal size-1.5 rounded-full" style={{ background: 'var(--signal)' }} />
-                      <span className="text-[9px] font-mono tracking-cosmic" style={{ color: 'var(--star-3)' }}>
+                      <span className="size-1.5 rounded-full bg-[#E040A0] animate-pulse" />
+                      <span className="text-[9px] font-bold text-[#E040A0] uppercase tracking-wide">
                         RENDERING…
                       </span>
                     </div>
                   )}
 
-                  {/* Hover overlay — HUD style */}
-                  <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2"
-                    style={{ background: 'rgba(5, 7, 10, 0.75)', backdropFilter: 'blur(4px)' }}
-                  >
-                    {/* Corner HUD markers */}
-                    <div className="absolute top-2 left-2 size-4 border-t border-l" style={{ borderColor: 'var(--signal)' }} />
-                    <div className="absolute top-2 right-2 size-4 border-t border-r" style={{ borderColor: 'var(--signal)' }} />
-                    <div className="absolute bottom-2 left-2 size-4 border-b border-l" style={{ borderColor: 'var(--signal)' }} />
-                    <div className="absolute bottom-2 right-2 size-4 border-b border-r" style={{ borderColor: 'var(--signal)' }} />
-
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2 bg-black/20 backdrop-blur-sm">
                     <button
                       onClick={e => { e.stopPropagation(); navigate(`/preview/${project.id}`); }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-cosmic rounded text-white transition-all hover:border-[var(--seam-glow)]"
-                      style={{ border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)' }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-white bg-white/20 border border-white/30 hover:bg-white/30 transition-all backdrop-blur-sm"
                     >
-                      <ExternalLinkIcon className="size-2.5" />
-                      VIEW
+                      <ExternalLinkIcon className="size-3" />
+                      Preview
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-cosmic rounded text-white transition-all"
-                      style={{
-                        background: 'linear-gradient(135deg, var(--signal), var(--pulse))',
-                        border: '1px solid rgba(239, 68, 68,0.4)',
-                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-white bg-[#E040A0] hover:bg-[#c9328d] transition-all"
                     >
-                      OPEN
+                      Open
                     </button>
                   </div>
+
+                  {/* Published badge */}
+                  {project.isPublished && (
+                    <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-green-500/90 rounded-full">
+                      <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                      <span className="text-[8px] font-bold text-white uppercase">Live</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Project meta */}
-                <div className="px-4 py-3" style={{ borderTop: '1px solid var(--seam)' }}>
+                <div className="px-4 py-3.5 border-t border-slate-100">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--star-1)' }}>
-                        {project.name}
-                      </p>
-                      <p className="text-[10px] font-mono tracking-cosmic mt-0.5" style={{ color: 'var(--star-3)' }}>
+                      <p className="text-sm font-bold text-slate-800 truncate">{project.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
                         {new Date(project.createdAt).toLocaleDateString([], {
                           month: 'short', day: '2-digit', year: 'numeric'
                         })}
@@ -210,9 +182,8 @@ const MyProjects = () => {
                     </div>
                     <button
                       onClick={e => deleteProject(e, project.id)}
-                      className="flex-shrink-0 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-all hover:text-red-400"
-                      style={{ color: 'var(--star-3)' }}
-                      title="Terminate project"
+                      className="flex-shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-slate-400 hover:text-red-500 hover:bg-red-50"
+                      title="Delete project"
                     >
                       <TrashIcon className="size-3.5" />
                     </button>

@@ -27,21 +27,21 @@ type DeviceMode = "phone" | "tablet" | "desktop";
 
 /* ─── Loading skeleton ──────────────────────────────────────────── */
 const CockpitSkeleton = () => (
-  <div className="flex h-screen w-full" style={{ background: 'var(--void)' }}>
+  <div className="flex h-screen w-full bg-slate-50">
     {/* Sidebar skeleton */}
-    <div className="w-[300px] flex-shrink-0" style={{ borderRight: '1px solid var(--seam)', background: 'var(--space)' }}>
-      <div className="h-11 skeleton" style={{ borderBottom: '1px solid var(--seam)' }} />
+    <div className="w-[300px] flex-shrink-0 bg-white border-r border-slate-100">
+      <div className="h-11 border-b border-slate-100" />
       <div className="p-4 flex flex-col gap-3">
         {[70, 55, 85, 45, 65].map((w, i) => (
-          <div key={i} className="skeleton rounded h-3" style={{ width: `${w}%`, opacity: 0.6 }} />
+          <div key={i} className="bg-slate-100 animate-pulse rounded h-3" style={{ width: `${w}%`, opacity: 0.6 }} />
         ))}
       </div>
     </div>
     {/* Canvas skeleton */}
     <div className="flex-1 flex flex-col">
-      <div className="h-11 skeleton" style={{ borderBottom: '1px solid var(--seam)' }} />
+      <div className="h-11 border-b border-slate-100" />
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full h-full skeleton rounded-lg" style={{ opacity: 0.4 }} />
+        <div className="w-full h-full bg-slate-100 animate-pulse rounded-lg" style={{ opacity: 0.4 }} />
       </div>
     </div>
   </div>
@@ -122,15 +122,66 @@ const Projects = () => {
     }
   }, [project, fetchProject]);
 
+  useEffect(() => {
+    if (!projectId || !project) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const apiHost = import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace(/^https?:\/\//, '')
+      : window.location.host;
+    const wsUrl = `${protocol}//${apiHost}/ws?projectId=${projectId}`;
+
+    let ws: WebSocket;
+    let pollFallback: ReturnType<typeof setInterval> | null = null;
+
+    try {
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const { event: eventType, data } = JSON.parse(event.data);
+          if (eventType === "job:update") {
+            if (data.status === "COMPLETED") {
+              setIsGenerating(false);
+              fetchProject();
+            } else if (data.status === "FAILED") {
+              setIsGenerating(false);
+              toast.error("Code generation failed. Please try again.");
+            }
+          }
+        } catch (e) {
+          console.error("[WS] Parse error:", e);
+        }
+      };
+
+      ws.onerror = () => {
+        console.warn("[WS] Connection failed — falling back to polling");
+        pollFallback = setInterval(fetchProject, 5000);
+      };
+
+      ws.onclose = () => {
+        if (pollFallback) clearInterval(pollFallback);
+      };
+    } catch (e) {
+      console.error("[WS] Failed to initialise:", e);
+      pollFallback = setInterval(fetchProject, 5000);
+    }
+
+    return () => {
+      ws?.close();
+      if (pollFallback) clearInterval(pollFallback);
+    };
+  }, [projectId, project, fetchProject]);
+
   if (loading) return <CockpitSkeleton />;
 
   if (!project) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ background: 'var(--void)' }}>
+      <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-          <p className="text-xs font-mono tracking-cosmic mb-3" style={{ color: 'var(--star-3)' }}>SIGNAL LOST</p>
-          <p className="text-sm font-medium mb-4" style={{ color: 'var(--star-1)' }}>Project not found</p>
-          <Link to="/projects" className="text-xs font-mono tracking-cosmic" style={{ color: 'var(--signal)' }}>
+          <p className="text-xs font-bold tracking-wider mb-3 text-slate-400 uppercase">SIGNAL LOST</p>
+          <p className="text-sm font-medium mb-4 text-slate-600">Project not found</p>
+          <Link to="/projects" className="text-xs font-semibold text-[#E040A0] hover:underline">
             ← RETURN TO BASE
           </Link>
         </div>
@@ -145,58 +196,47 @@ const Projects = () => {
   };
 
   return (
-    <div
-      className="flex flex-col h-screen w-full overflow-hidden"
-      style={{ background: 'var(--void)', color: 'var(--star-1)' }}
-    >
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-slate-50 text-slate-800 font-sans">
       {/* ── Cockpit Toolbar ─────────────────────────────────────── */}
-      <header
-        className="flex items-center h-11 flex-shrink-0 px-3 gap-3"
-        style={{
-          background: 'rgba(8, 12, 20, 0.95)',
-          borderBottom: '1px solid var(--seam)',
-          backdropFilter: 'blur(20px)',
-        }}
-      >
+      <header className="flex items-center h-14 flex-shrink-0 px-4 gap-4 bg-white border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] relative z-20">
         {/* Left: Forge logo + project name */}
-        <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
           {/* Logo mark */}
           <button
             onClick={() => navigate("/")}
-            className="size-6 rounded-sm flex items-center justify-center flex-shrink-0 transition-all hover:shadow-[0_0_10px_rgba(239, 68, 68,0.4)]"
-            style={{ background: 'linear-gradient(135deg, var(--signal), var(--pulse))' }}
+            className="size-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all bg-[#E040A0] hover:bg-[#c9328d] shadow-[0_2px_8px_rgba(224,64,160,0.3)]"
             title="Home"
           >
-            <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-              <path d="M2 10L7 4L12 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path d="M2 10L7 4L12 10" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
 
           {/* Divider */}
-          <div className="w-px h-4 flex-shrink-0" style={{ background: 'var(--seam-glow)' }} />
+          <div className="w-px h-5 flex-shrink-0 bg-slate-200" />
 
           {/* Sidebar toggle */}
           <button
             onClick={() => setSidebarOpen(v => !v)}
-            className="p-1.5 rounded transition-colors"
+            className="p-2 rounded-lg transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-50"
             style={{
-              color: sidebarOpen ? 'var(--signal)' : 'var(--star-3)',
-              background: sidebarOpen ? 'var(--signal-dim)' : 'transparent',
+              color: sidebarOpen ? '#E040A0' : undefined,
+              background: sidebarOpen ? '#fdf2f8' : undefined,
             }}
             title="Toggle panel"
           >
-            <PanelLeftIcon className="size-3.5" />
+            <PanelLeftIcon className="size-4" />
           </button>
 
           {/* Project name */}
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="text-xs font-medium truncate max-w-[160px]" style={{ color: 'var(--star-2)' }}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <p className="text-sm font-semibold truncate max-w-[160px] text-slate-800">
               {project.name}
             </p>
             {isGenerating && (
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="animate-signal size-1.5 rounded-full" style={{ background: 'var(--signal)' }} />
-                <span className="text-[9px] font-mono tracking-cosmic" style={{ color: 'var(--signal)' }}>
+              <div className="flex items-center gap-1.5 flex-shrink-0 px-2 py-0.5 rounded-full bg-pink-50 border border-pink-100">
+                <span className="size-1.5 rounded-full bg-[#E040A0] animate-pulse" />
+                <span className="text-[9px] font-bold tracking-wide text-[#E040A0] uppercase">
                   RENDERING
                 </span>
               </div>
@@ -205,10 +245,7 @@ const Projects = () => {
         </div>
 
         {/* Center: Device viewport picker */}
-        <div
-          className="hidden sm:flex items-center gap-0.5 mx-auto rounded px-1 py-1"
-          style={{ background: 'var(--nebula)', border: '1px solid var(--seam)' }}
-        >
+        <div className="hidden sm:flex items-center gap-1 mx-auto rounded-xl p-1 bg-slate-100 border border-slate-200/60">
           {([
             { key: 'phone',   Icon: SmartphoneIcon, label: 'MOB' },
             { key: 'tablet',  Icon: TabletIcon,      label: 'TAB' },
@@ -218,47 +255,45 @@ const Projects = () => {
               key={key}
               onClick={() => setDevice(key)}
               title={label}
-              className="flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-mono tracking-cosmic transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all"
               style={{
-                color: device === key ? 'var(--signal)' : 'var(--star-3)',
-                background: device === key ? 'var(--signal-dim)' : 'transparent',
-                border: device === key ? '1px solid var(--seam-glow)' : '1px solid transparent',
+                color: device === key ? '#E040A0' : '#64748b',
+                background: device === key ? '#ffffff' : 'transparent',
+                boxShadow: device === key ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
               }}
             >
-              <Icon className="size-3" />
+              <Icon className="size-3.5" />
               <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
 
         {/* Right: Action controls */}
-        <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
 
           {/* System Telemetry */}
-          <div className="hidden lg:flex items-center gap-3 mr-4 px-3 py-1 rounded"
-            style={{ border: '1px solid var(--seam)', background: 'var(--space)' }}>
+          <div className="hidden lg:flex items-center gap-4 mr-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50">
             <div className="flex items-center gap-1.5" title="System Load">
-              <CpuIcon className="size-2.5" style={{ color: 'var(--star-3)' }} />
-              <span className="text-[9px] font-mono tracking-cosmic" style={{ color: 'var(--star-2)' }}>14%</span>
+              <CpuIcon className="size-3.5 text-slate-400" />
+              <span className="text-xs font-semibold text-slate-600">14%</span>
             </div>
             <div className="flex items-center gap-1.5" title="Network Status">
-              <WifiIcon className="size-2.5" style={{ color: 'var(--signal)' }} />
-              <span className="text-[9px] font-mono tracking-cosmic" style={{ color: 'var(--star-2)' }}>32ms</span>
+              <WifiIcon className="size-3.5 text-[#E040A0]" />
+              <span className="text-xs font-semibold text-slate-600">32ms</span>
             </div>
           </div>
 
           {/* Ghost buttons */}
           {[
-            { label: "SAVE", Icon: SaveIcon, onClick: saveProject, hidden: false },
-            { label: "EXPORT", Icon: DownloadIcon, onClick: downloadCode, hidden: false },
-          ].map(({ label, Icon, onClick, hidden }) => (
+            { label: "SAVE", Icon: SaveIcon, onClick: saveProject },
+            { label: "EXPORT", Icon: DownloadIcon, onClick: downloadCode },
+          ].map(({ label, Icon, onClick }) => (
             <button
               key={label}
               onClick={onClick}
-              className={`${hidden ? 'hidden sm:flex' : 'hidden sm:flex'} items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-mono tracking-cosmic rounded transition-all hover:text-[var(--signal)] hover:border-[var(--seam-glow)]`}
-              style={{ color: 'var(--star-3)', border: '1px solid var(--seam)', background: 'transparent' }}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-600 transition-all active:scale-[0.98]"
             >
-              <Icon className="size-3" />
+              <Icon className="size-3.5" />
               {label}
             </button>
           ))}
@@ -267,28 +302,27 @@ const Projects = () => {
           <Link
             target="_blank"
             to={`/preview/${projectId}`}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-mono tracking-cosmic rounded transition-all hover:text-[var(--signal)] hover:border-[var(--seam-glow)]"
-            style={{ color: 'var(--star-3)', border: '1px solid var(--seam)' }}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-600 transition-all"
           >
-            <FullscreenIcon className="size-3" />
+            <FullscreenIcon className="size-3.5" />
             PREVIEW
           </Link>
 
           {/* Publish — primary CTA */}
           <button
             onClick={togglePublish}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-cosmic rounded text-white transition-all hover:shadow-[0_0_10px_rgba(239, 68, 68,0.2)] active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white transition-all shadow-sm active:scale-[0.98]"
             style={{
               background: project.isPublished
-                ? 'var(--nebula)'
-                : 'linear-gradient(135deg, var(--signal), var(--pulse))',
-              border: `1px solid ${project.isPublished ? 'var(--seam)' : 'rgba(239, 68, 68,0.3)'}`,
+                ? '#64748b'
+                : '#E040A0',
+              boxShadow: project.isPublished ? 'none' : '0 4px 12px rgba(224, 64, 160, 0.25)',
             }}
           >
             {project.isPublished ? (
-              <><EyeOffIcon className="size-3" /> UNPUBLISH</>
+              <><EyeOffIcon className="size-3.5" /> UNPUBLISH</>
             ) : (
-              <><EyeIcon className="size-3" /> DEPLOY</>
+              <><EyeIcon className="size-3.5" /> DEPLOY</>
             )}
           </button>
         </div>
@@ -309,20 +343,12 @@ const Projects = () => {
         )}
 
         {/* Main Viewport */}
-        <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: 'var(--void)' }}>
+        <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-50">
 
           {/* Viewport label */}
-          <div
-            className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-2.5 py-1 rounded hud-corners"
-            style={{
-              background: 'rgba(8,12,20,0.7)',
-              border: '1px solid var(--seam)',
-              backdropFilter: 'blur(8px)',
-              pointerEvents: 'none',
-            }}
-          >
-            <SatelliteIcon className="size-2.5" style={{ color: 'var(--signal)' }} />
-            <span className="text-[9px] font-mono tracking-cosmic" style={{ color: 'var(--star-3)' }}>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-slate-200/60 shadow-[0_2px_12px_rgba(0,0,0,0.03)] backdrop-blur-md pointer-events-none">
+            <SatelliteIcon className="size-3.5 text-[#E040A0]" />
+            <span className="text-[10px] font-bold tracking-wider text-slate-500">
               VIEWPORT · {device.toUpperCase()} ·{' '}
               {device === 'phone' ? '390px' : device === 'tablet' ? '768px' : 'FULL'}
             </span>
@@ -330,47 +356,35 @@ const Projects = () => {
 
           {/* ── First-time onboarding hint ── */}
           {showOnboarding && project.current_code && (
-            <div
-              className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-lg hud-corners animate-fade-up"
-              style={{
-                background: 'rgba(11, 16, 32, 0.92)',
-                border: '1px solid var(--seam-glow)',
-                backdropFilter: 'blur(16px)',
-                boxShadow: '0 0 30px rgba(239, 68, 68, 0.08)',
-                maxWidth: '380px',
-                width: 'calc(100% - 40px)',
-              }}
-            >
-              <div className="size-7 rounded flex-shrink-0 flex items-center justify-center"
-                style={{ background: 'var(--signal-dim)', border: '1px solid var(--seam-glow)' }}>
-                <MousePointerClickIcon className="size-3.5" style={{ color: 'var(--signal)' }} />
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 px-5 py-4 bg-white/95 border border-slate-200 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-md max-w-sm w-[calc(100%-32px)] animate-fade-up">
+              <div className="size-9 rounded-xl flex-shrink-0 flex items-center justify-center bg-pink-50 border border-pink-100">
+                <MousePointerClickIcon className="size-4 text-[#E040A0]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium" style={{ color: 'var(--star-1)' }}>Click any section to edit it</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--star-2)' }}>
+                <p className="text-sm font-bold text-slate-800">Click any section to edit it</p>
+                <p className="text-xs text-slate-500 mt-0.5">
                   Select an element, then describe your change in the panel.
                 </p>
               </div>
               <button
                 onClick={dismissOnboarding}
-                className="flex-shrink-0 p-1 rounded transition-colors hover:text-[var(--star-1)] focus-visible:ring-2"
-                style={{ color: 'var(--star-3)' }}
+                className="flex-shrink-0 p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
                 aria-label="Dismiss tip"
               >
-                <XIcon className="size-3.5" />
+                <XIcon className="size-4" />
               </button>
             </div>
           )}
 
           {/* Canvas */}
-          <div className="flex-1 flex items-center justify-center p-5 overflow-hidden pt-10">
+          <div className="flex-1 flex items-center justify-center p-6 overflow-hidden pt-14">
             <div
-              className="h-full overflow-hidden rounded-lg transition-all duration-300 hud-corners"
+              className="h-full overflow-hidden rounded-2xl transition-all duration-300 bg-white"
               style={{
                 width: DEVICE_WIDTHS[device],
                 maxWidth: '100%',
-                border: '1px solid var(--seam)',
-                boxShadow: '0 0 60px rgba(0,0,0,0.6), 0 0 1px rgba(239, 68, 68,0.08)',
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.03)',
               }}
             >
               <ProjectPreview

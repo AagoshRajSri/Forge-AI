@@ -17,8 +17,27 @@ if (!neonConfig.webSocketConstructor) {
   neonConfig.webSocketConstructor = ws;
 }
 
-const pool = new Pool({ connectionString });
-const adapter = new PrismaNeon(pool);
-const prisma = new PrismaClient({ adapter, log: ["error", "warn"] });
+let pool: Pool;
+
+function getPool() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString,
+      max: 5,                     // Limit for serverless
+      idleTimeoutMillis: 30000,   // Close idle connections after 30s
+      connectionTimeoutMillis: 5000, // Fail fast if can't connect
+    });
+    pool.on("error", (err: Error) => {
+      console.error("Unexpected Neon pool error:", err);
+    });
+  }
+  return pool;
+}
+
+const adapter = new PrismaNeon(getPool());
+const prisma = new PrismaClient({
+  adapter,
+  log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+});
 
 export default prisma;

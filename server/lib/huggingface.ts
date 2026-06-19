@@ -8,7 +8,7 @@ export const generateWithHF = async (prompt: string, systemPrompt?: string, mode
 
     console.log(`Generating code using model: ${modelName}`);
 
-    const messages: any[] = [];
+    const messages: { role: string; content: string }[] = [];
     if (systemPrompt) {
         messages.push({ role: "system", content: systemPrompt });
     }

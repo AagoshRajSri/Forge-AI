@@ -37,7 +37,7 @@ model WebsiteProject {
   userId         String
   isPublished    Boolean @default(false)
   current_code   String?
-  current_version_index String? @default("0")
+  current_version_index String?
 
   conversation Conversation[]
   branches     Branch[]
@@ -67,8 +67,9 @@ model Branch {
 
 model Version {
   id          String   @id @default(uuid())
-  patch       String // JSON patch or unified diff string
-  fullHtml    String? // Optional snapshot for faster rendering on major versions
+  patch       String   @default("") // Legacy field — kept for client compatibility
+  diffBase64  String?  // Base64-encoded JSON patch
+  fullHtml    String?  // Full snapshot
   description String?
   timestamp   DateTime @default(now())
 

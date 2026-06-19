@@ -105,26 +105,20 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
     <div
       className={`h-full flex flex-col flex-shrink-0 transition-all duration-200 ${
         isMenuOpen ? "max-sm:w-0 max-sm:overflow-hidden" : "w-full"
-      } sm:w-[300px]`}
-      style={{
-        background: 'rgba(8, 12, 20, 0.9)',
-        borderRight: '1px solid var(--seam)',
-        backdropFilter: 'blur(20px)',
-      }}
+      } sm:w-[300px] bg-white border-r border-slate-200/80`}
     >
       {/* ── Panel Header ───────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 h-11 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--seam)' }}>
+      <div className="flex items-center justify-between px-4 h-14 flex-shrink-0 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <RadioIcon className="size-3" style={{ color: 'var(--signal)' }} />
-          <span className="text-[10px] font-mono tracking-cosmic uppercase" style={{ color: 'var(--star-2)' }}>
+          <div className="w-2 h-2 rounded-full bg-[#E040A0]" />
+          <span className="text-xs font-bold tracking-wide text-slate-600 uppercase">
             Command Log
           </span>
         </div>
         {isGenerating && (
-          <div className="flex items-center gap-1.5">
-            <span className="animate-signal size-1.5 rounded-full" style={{ background: 'var(--signal)' }} />
-            <span className="text-[10px] font-mono tracking-cosmic" style={{ color: 'var(--signal)' }}>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-50 border border-pink-100">
+            <span className="size-1.5 rounded-full bg-[#E040A0] animate-pulse" />
+            <span className="text-[9px] font-bold tracking-wide text-[#E040A0] uppercase">
               ACTIVE
             </span>
           </div>
@@ -137,11 +131,11 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
         {/* Empty state */}
         {timeline.length === 0 && !isGenerating && (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <div className="size-10 rounded-full mb-4 flex items-center justify-center"
-              style={{ background: 'var(--signal-dim)', border: '1px solid var(--seam-glow)' }}>
-              <RadioIcon className="size-4" style={{ color: 'var(--signal)' }} />
+            <div className="size-12 rounded-2xl mb-4 flex items-center justify-center bg-pink-50 border border-pink-100">
+              <RadioIcon className="size-5 text-[#E040A0]" />
             </div>
-            <p className="text-xs" style={{ color: 'var(--star-2)' }}>
+            <p className="text-sm font-medium text-slate-700 mb-1">Ready to edit</p>
+            <p className="text-xs text-slate-400">
               Describe a change below to begin
             </p>
           </div>
@@ -155,22 +149,22 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
             const isUser = msg.role === "user";
             return (
               <div key={msg.id} className={`flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-                <span className="text-[10px] px-0.5 tracking-cosmic uppercase" style={{ color: 'var(--star-3)' }}>
-                  {isUser ? "OPERATOR" : "SYSTEM_CORE"}
+                <span className="text-[10px] px-0.5 font-bold tracking-wide uppercase text-slate-400">
+                  {isUser ? "YOU" : "FORGE AI"}
                 </span>
                 <div
-                  className="max-w-[88%] px-3 py-2 text-xs leading-relaxed rounded hud-corners"
+                  className="max-w-[88%] px-3.5 py-2.5 text-xs leading-relaxed rounded-2xl"
                   style={isUser
                     ? {
-                        background: 'rgba(239, 68, 68,0.08)',
-                        border: '1px solid var(--seam-glow)',
-                        color: 'var(--star-1)',
-                        boxShadow: 'inset 0 0 10px rgba(239, 68, 68,0.05)',
+                        background: '#E040A0',
+                        color: 'white',
+                        borderBottomRightRadius: '4px',
                       }
                     : {
-                        background: 'var(--nebula)',
-                        border: '1px solid var(--seam)',
-                        color: 'var(--star-2)',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        color: '#475569',
+                        borderBottomLeftRadius: '4px',
                       }
                   }
                 >
@@ -184,24 +178,23 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
             return (
               <div
                 key={ver.id}
-                className="rounded p-3 flex flex-col gap-2.5"
+                className="rounded-2xl p-3.5 flex flex-col gap-2.5 border"
                 style={{
-                  background: 'rgba(239, 68, 68, 0.04)',
-                  border: `1px solid ${isCurrent ? 'var(--seam-glow)' : 'var(--seam)'}`,
+                  background: isCurrent ? '#fdf2f8' : '#f8fafc',
+                  borderColor: isCurrent ? '#fbcfe8' : '#e2e8f0',
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px]" style={{ color: 'var(--star-3)' }}>
+                  <span className="text-[10px] font-semibold text-slate-500">
                     Version saved
                   </span>
                   {isCurrent && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono tracking-cosmic"
-                      style={{ background: 'var(--signal-dim)', color: 'var(--signal)', border: '1px solid var(--seam-glow)' }}>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full font-bold text-[#E040A0] bg-pink-100 border border-pink-200">
                       LIVE
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-mono" style={{ color: 'var(--star-2)' }}>
+                <span className="text-xs font-medium text-slate-600">
                   {new Date(ver.timestamp).toLocaleString([], {
                     month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'
                   })}
@@ -210,8 +203,7 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
                   {!isCurrent && (
                     <button
                       onClick={() => handleRollback(ver.id)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-all hover:border-[var(--seam-glow)] hover:text-[var(--signal)]"
-                      style={{ color: 'var(--star-2)', border: '1px solid var(--seam)', background: 'transparent' }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-[#E040A0] hover:text-[#E040A0] transition-all"
                     >
                       <RotateCcwIcon className="size-3" />
                       Restore
@@ -220,10 +212,9 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
                   <Link
                     target="_blank"
                     to={`/preview/${project.id}/${ver.id}`}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono tracking-cosmic rounded transition-all hover:border-[var(--seam-glow)] hover:text-[var(--signal)]"
-                    style={{ color: 'var(--star-3)', border: '1px solid var(--seam)', background: 'transparent' }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-[#E040A0] hover:text-[#E040A0] transition-all"
                   >
-                    <EyeIcon className="size-2.5" />
+                    <EyeIcon className="size-3" />
                     VIEW
                   </Link>
                 </div>
@@ -235,18 +226,23 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
         {/* Generating state */}
         {isGenerating && (
           <div className="flex flex-col gap-1 items-start animate-fade-up">
-            <span className="text-[10px] px-0.5 tracking-cosmic uppercase" style={{ color: 'var(--star-3)' }}>
-              SYSTEM_CORE
+            <span className="text-[10px] px-0.5 font-bold tracking-wide uppercase text-slate-400">
+              FORGE AI
             </span>
-            <div className="px-4 py-3 rounded flex flex-col gap-2 hud-corners holo-input"
-              style={{
-                background: 'rgba(10, 16, 28, 0.5)',
-              }}>
-              {/* Energy bar */}
-              <div className="w-full h-px rounded-full overflow-hidden" style={{ background: 'var(--seam)' }}>
-                <div className="h-full energy-bar" style={{ width: '60%' }} />
+            <div className="px-4 py-3 rounded-2xl rounded-bl-sm border border-pink-100 bg-pink-50 flex flex-col gap-2.5 max-w-[88%]">
+              {/* Progress bar */}
+              <div className="w-full h-1 rounded-full overflow-hidden bg-pink-100">
+                <div
+                  className="h-full rounded-full bg-[#E040A0] transition-all"
+                  style={{
+                    width: '60%',
+                    animation: 'shimmer 1.5s ease-in-out infinite',
+                    background: 'linear-gradient(90deg, #E040A0, #f472b6, #E040A0)',
+                    backgroundSize: '200% 100%',
+                  }}
+                />
               </div>
-              <span key={stepIndex} className="text-xs font-mono animate-fade-up" style={{ color: 'var(--signal)' }}>
+              <span key={stepIndex} className="text-xs font-medium text-[#E040A0]">
                 {STEPS[stepIndex]}
               </span>
             </div>
@@ -257,45 +253,28 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
       </div>
 
       {/* ── Command Input ──────────────────────────────────────────── */}
-      <div className="flex-shrink-0" style={{ borderTop: '1px solid var(--seam)' }}>
-        <form onSubmit={handleRevisions} className="p-3 flex flex-col gap-2">
-          <div className="relative rounded holo-input hud-corners"
-            style={{ background: 'var(--space)' }}>
-            <span className="absolute top-2.5 left-3 text-[9px] font-mono tracking-cosmic text-blue-400 opacity-50">
-              CMD ›
-            </span>
+      <div className="flex-shrink-0 border-t border-slate-100 bg-white">
+        <form onSubmit={handleRevisions} className="p-3 flex flex-col gap-2.5">
+          <div className="relative rounded-xl border border-slate-200 bg-slate-50 focus-within:border-[#E040A0] focus-within:ring-2 focus-within:ring-[#E040A0]/10 transition-all">
             <textarea
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               rows={3}
-              placeholder="Enter system modification…"
+              placeholder="Describe your change..."
               disabled={isGenerating}
-              className="w-full bg-transparent text-xs resize-none outline-none pt-2.5 pb-2.5 pr-3 pl-10 disabled:opacity-50"
-              style={{
-                color: 'var(--star-1)',
-                caretColor: 'var(--signal)',
-              }}
-              onFocus={e => {
-                (e.currentTarget.parentElement as HTMLElement).style.borderColor = 'var(--seam-glow)';
-                (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 12px rgba(239, 68, 68,0.08) inset';
-              }}
-              onBlur={e => {
-                (e.currentTarget.parentElement as HTMLElement).style.borderColor = 'var(--seam)';
-                (e.currentTarget.parentElement as HTMLElement).style.boxShadow = 'none';
-              }}
+              className="w-full bg-transparent text-xs resize-none outline-none pt-3 pb-3 px-4 disabled:opacity-50 text-slate-700 placeholder:text-slate-300"
               onKeyDown={e => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleRevisions(e as any);
               }}
             />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[10px]" style={{ color: 'var(--star-3)' }}>⌘ Enter</span>
+            <span className="text-[10px] text-slate-400">⌘ Enter to apply</span>
             <button
               type="submit"
               disabled={isGenerating || !input.trim()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded text-white transition-all active:scale-95 disabled:opacity-30 hover:shadow-[0_0_10px_rgba(239, 68, 68,0.2)] focus-visible:ring-2"
-              style={{ background: 'linear-gradient(135deg, var(--signal), var(--pulse))', border: '1px solid rgba(239, 68, 68,0.3)' }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-white bg-[#E040A0] hover:bg-[#c9328d] shadow-[0_2px_8px_rgba(224,64,160,0.3)] transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <SendIcon className="size-3" />
               Apply
