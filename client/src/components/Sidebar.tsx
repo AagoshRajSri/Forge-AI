@@ -79,7 +79,14 @@ const Sidebar = ({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
       await api.post(`/api/project/revision/${project.id}`, { message: input });
       fetchProject();
       toast.success("Modifications applied", {
-        action: { label: "Undo", onClick: () => {} },
+        action: {
+          label: "Undo",
+          onClick: () => {
+            const versions = project.versions || [];
+            const prev = versions[versions.length - 2];
+            if (prev) handleRollback(prev.id);
+          }
+        },
       });
       setInput("");
     } catch (error: any) {

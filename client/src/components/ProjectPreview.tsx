@@ -50,7 +50,7 @@ const ProjectPreview = forwardRef<ProjectPreviewRef, ProjectPreviewProps>(
     }, []);
 
     const handleUpdate = (updates: any) => {
-      iframeRef.current?.contentWindow?.postMessage({ type: "UPDATE_ELEMENT", payload: updates }, "*");
+      iframeRef.current?.contentWindow?.postMessage({ type: "UPDATE_ELEMENT", payload: updates }, window.location.origin);
     };
 
     const injectPreview = (html: string) => {
@@ -78,7 +78,7 @@ const ProjectPreview = forwardRef<ProjectPreviewRef, ProjectPreviewProps>(
                 onUpdate={handleUpdate}
                 onClose={() => {
                   setSelectedElement(null);
-                  iframeRef.current?.contentWindow?.postMessage({ type: "CLEAR_SELECTION_REQUEST" }, "*");
+                  iframeRef.current?.contentWindow?.postMessage({ type: "CLEAR_SELECTION_REQUEST" }, window.location.origin);
                 }}
               />
             )}

@@ -136,7 +136,7 @@ const Deployments = () => {
                         srcDoc={project.current_code}
                         className="w-full h-full scale-[0.5] origin-top-left pointer-events-none"
                         style={{ width: "200%", height: "200%" }}
-                        sandbox=""
+                        sandbox="allow-scripts"
                         title={project.name}
                       />
                     )}

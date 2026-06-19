@@ -49,22 +49,7 @@ export const makeRevision = async (req: Request, res: Response) => {
       },
     });
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        credits: { decrement: 5 },
-      },
-    });
-
-    await prisma.transaction.create({
-      data: {
-        userId,
-        type: "COMPONENT_EDIT",
-        credits: -5,
-      },
-    });
-
-    // enhance user prompt
+    // enhance user prompt — credits deducted only after successful generation
     const enhancedPrompt = await generateWithHF(`
     You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
     
@@ -119,10 +104,6 @@ Return the COMPLETE updated HTML document only.
           projectId,
         },
       });
-      await prisma.user.update({
-        where: { id: userId },
-        data: { credits: { increment: 5 } },
-      });
       return res.status(500).json({ message: "Failed to generate code" });
     }
 
@@ -139,12 +120,17 @@ Return the COMPLETE updated HTML document only.
           projectId,
         },
       });
-      await prisma.user.update({
-        where: { id: userId },
-        data: { credits: { increment: 5 } },
-      });
       return res.status(500).json({ message: "Failed to generate valid code (empty response)" });
     }
+
+    // Deduct credits only after we confirmed AI produced valid output
+    await prisma.user.update({
+      where: { id: userId },
+      data: { credits: { decrement: 5 } },
+    });
+    await prisma.transaction.create({
+      data: { userId, type: "COMPONENT_EDIT", credits: -5 },
+    });
 
     // Ensure main branch exists
     const branch = await prisma.branch.upsert({
@@ -193,14 +179,8 @@ Return the COMPLETE updated HTML document only.
 
     res.json({ message: "Changes made successfully" });
   } catch (error: any) {
-    if (userId) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { credits: { increment: 5 } },
-      }).catch(() => {}); // best-effort refund
-    }
-    console.log(error.code || error.message);
-    res.status(500).json({ message: error.message });
+    // Credits were not yet deducted if AI failed — no refund needed
+    res.status(500).json({ message: "An error occurred while processing your request" });
   }
 };
 

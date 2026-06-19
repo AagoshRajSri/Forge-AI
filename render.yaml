@@ -3,17 +3,16 @@ services:
     name: forge-ai-server
     runtime: node
     plan: standard
-    buildCommand: npm install && npm run build
+    rootDir: server
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
+        value: 10000
       - key: DATABASE_URL
-        fromDatabase:
-          name: forge-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         fromService:
           name: forge-redis
@@ -22,11 +21,11 @@ services:
       - key: BETTER_AUTH_SECRET
         sync: false
       - key: BETTER_AUTH_URL
-        value: https://forge-ai-server.onrender.com
+        sync: false
       - key: BETTER_AUTH_CALLBACK_URL
-        value: https://forge-ai-server.onrender.com/api/auth/callback
+        sync: false
       - key: TRUSTED_ORIGINS
-        value: https://forge-ai-server.onrender.com
+        sync: false
       - key: HF_TOKEN
         sync: false
       - key: STRIPE_SECRET_KEY
@@ -39,7 +38,7 @@ services:
   - type: redis
     name: forge-redis
     plan: free
-    maxmemoryPolicy: noeviction
+    maxmemoryPolicy: allkeys-lru
 
 databases:
   - name: forge-db

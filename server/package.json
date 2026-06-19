@@ -8,7 +8,7 @@
     "dev": "nodemon --exec tsx server.ts",
     "start": "node dist/server.js",
     "server": "nodemon --exec tsx server.ts",
-    "build": "npm install --prefix ../client && npm run build --prefix ../client && npx prisma generate && tsc"
+    "build": "npm install --include=dev --prefix ../client && npm run build --prefix ../client && npx prisma generate && tsc"
   },
   "keywords": [],
   "author": "",
