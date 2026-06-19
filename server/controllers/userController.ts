@@ -320,7 +320,13 @@ export const purchaseCredits = async (req: Request, res: Response) => {
     };
     const userId = req.userId;
     const { planId } = req.body as { planId: keyof typeof plans };
-    const origin = req.headers.origin as string;
+    
+    const allowedOrigins = process.env.TRUSTED_ORIGINS?.split(",").filter(Boolean) || ["http://localhost:5173", "http://localhost:3000"];
+    let origin = req.headers.origin as string;
+    if (!origin || !allowedOrigins.includes(origin)) {
+      origin = allowedOrigins[0];
+    }
+    
     const plan: Plan = plans[planId];
 
     if (!userId) {

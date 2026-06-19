@@ -6,10 +6,17 @@ export const makeRevision = async (req, res) => {
     try {
         const { projectId } = req.params;
         const { message } = req.body;
+        // Auth guard first — before any DB call
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        if (!message || message.trim() === "") {
+            return res.status(400).json({ message: "Please enter a valid prompt" });
+        }
         const user = await prisma.user.findUnique({
             where: { id: userId },
         });
-        if (!userId || !user) {
+        if (!user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
         if (user.credits < 5) {
@@ -17,12 +24,8 @@ export const makeRevision = async (req, res) => {
                 .status(403)
                 .json({ message: "add more credits to make changes" });
         }
-        if (!message || message.trim() === "") {
-            return res.status(400).json({ message: "Please enter a valid prompt" });
-        }
         const currentProject = await prisma.websiteProject.findUnique({
             where: { id: projectId, userId },
-            include: { versions: true },
         });
         if (!currentProject) {
             return res.status(404).json({ message: "Project not found" });
@@ -38,6 +41,13 @@ export const makeRevision = async (req, res) => {
             where: { id: userId },
             data: {
                 credits: { decrement: 5 },
+            },
+        });
+        await prisma.transaction.create({
+            data: {
+                userId,
+                type: "COMPONENT_EDIT",
+                credits: -5,
             },
         });
         // enhance user prompt
@@ -62,20 +72,27 @@ export const makeRevision = async (req, res) => {
             },
         });
         // generate website code
-        const code = await generateWithHF(`
-You are an expert web developer. 
-Update the following HTML code based on the user request.
-Return ONLY the complete updated HTML code.
-No explanation text.
+        const systemPrompt = `You are a world-class UI/UX designer and senior frontend engineer who creates breathtaking, premium websites.
 
+You are making a targeted change to an existing website. CRITICAL RULES:
+- Return ONLY the complete, updated HTML document — no explanations, no markdown fences
+- Preserve all existing design quality, animations, and styling unless the user asks to change them
+- When adding new elements, match the existing design language perfectly
+- If adding new sections: use glassmorphism cards, smooth hover transitions, and rich gradients
+- Include all existing CDN scripts (Tailwind, GSAP, Google Fonts) in the output
+- Make the requested change precise, polished, and visually stunning
+- Add or enhance CSS animations where appropriate
+
+The updated website must look premium and award-winning.`;
+        const code = await generateWithHF(`
 Current website code:
 "${currentProject.current_code}"
 
 User request for change:
 "${enhancedPrompt}"
 
-Updated HTML Output:
-    `);
+Return the COMPLETE updated HTML document only.
+    `, systemPrompt, "Qwen/Qwen2.5-Coder-7B-Instruct");
         if (!code) {
             await prisma.conversation.create({
                 data: {
@@ -90,14 +107,47 @@ Updated HTML Output:
             });
             return res.status(500).json({ message: "Failed to generate code" });
         }
+        const cleanedCode = code
+            .replace(/```[a-z]*\n?/gi, "")
+            .replace(/```$/g, "")
+            .trim();
+        if (!cleanedCode) {
+            await prisma.conversation.create({
+                data: {
+                    role: "assistant",
+                    content: "The AI failed to generate valid code. Please try a different prompt.",
+                    projectId,
+                },
+            });
+            await prisma.user.update({
+                where: { id: userId },
+                data: { credits: { increment: 5 } },
+            });
+            return res.status(500).json({ message: "Failed to generate valid code (empty response)" });
+        }
+        // Ensure main branch exists
+        const branch = await prisma.branch.upsert({
+            where: {
+                projectId_name: { projectId, name: "main" },
+            },
+            update: {},
+            create: {
+                projectId,
+                name: "main",
+                isDefault: true,
+            },
+        });
         const version = await prisma.version.create({
             data: {
-                code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
+                branchId: branch.id,
+                patch: "",
+                fullHtml: cleanedCode,
                 description: "changes made",
-                projectId,
+                // Only set parentId if it's a real UUID (not the "0" default or empty)
+                parentId: currentProject.current_version_index &&
+                    currentProject.current_version_index !== "0"
+                    ? currentProject.current_version_index
+                    : undefined,
             },
         });
         await prisma.conversation.create({
@@ -110,20 +160,19 @@ Updated HTML Output:
         await prisma.websiteProject.update({
             where: { id: projectId },
             data: {
-                current_code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
+                current_code: cleanedCode,
                 current_version_index: version.id,
             },
         });
         res.json({ message: "Changes made successfully" });
     }
     catch (error) {
-        await prisma.user.update({
-            where: { id: userId },
-            data: { credits: { increment: 5 } },
-        });
+        if (userId) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { credits: { increment: 5 } },
+            }).catch(() => { }); // best-effort refund
+        }
         console.log(error.code || error.message);
         res.status(500).json({ message: error.message });
     }
@@ -138,19 +187,21 @@ export const rollbackToVersion = async (req, res) => {
         const { projectId, versionId } = req.params;
         const project = await prisma.websiteProject.findUnique({
             where: { id: projectId, userId },
-            include: { versions: true },
         });
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
-        const version = project.versions.find((version) => version.id === versionId);
+        // Fetch version directly — versions live under branches
+        const version = await prisma.version.findFirst({
+            where: { id: versionId, branch: { projectId } },
+        });
         if (!version) {
             return res.status(404).json({ message: "Version not found" });
         }
         await prisma.websiteProject.update({
             where: { id: projectId, userId },
             data: {
-                current_code: version.code,
+                current_code: version.fullHtml ?? "",
                 current_version_index: version.id,
             },
         });
@@ -173,6 +224,9 @@ export const deleteProject = async (req, res) => {
     try {
         const userId = req.userId;
         const { projectId } = req.params;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
         await prisma.websiteProject.delete({
             where: { id: projectId, userId },
         });
@@ -193,7 +247,6 @@ export const getProjectPreview = async (req, res) => {
         }
         const project = await prisma.websiteProject.findFirst({
             where: { id: projectId, userId },
-            include: { versions: true },
         });
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
@@ -265,7 +318,7 @@ export const saveProjectCode = async (req, res) => {
             where: { id: projectId },
             data: {
                 current_code: code,
-                current_version_index: "",
+                // Keep current_version_index — manual edits don't create a new version
             },
         });
         res.json({ message: "project saved successfully" });

@@ -41,7 +41,7 @@ const Deployments = () => {
 
   const togglePublish = async (projectId: string) => {
     try {
-      const { data } = await api.get(`/api/user/publish-toggle/${projectId}`);
+      const { data } = await api.post(`/api/user/publish-toggle/${projectId}`);
       toast.success(data.message);
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
     } catch (error: any) {

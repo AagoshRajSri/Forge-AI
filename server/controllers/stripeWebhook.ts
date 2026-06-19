@@ -5,33 +5,45 @@ import prisma from "../lib/prisma.js";
 export const stripeWebHook = async (request: Request, response: Response) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
-  if (endpointSecret) {
-    // Get the signature sent by Stripe
-    const signature = request.headers["stripe-signature"] as string;
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        request.body,
-        signature,
-        endpointSecret
-      );
-    } catch (err: any) {
-      console.log(`⚠️ Webhook signature verification failed.`, err.message);
-      return response.sendStatus(400);
-    }
+  if (!endpointSecret) {
+    return response.status(400).send("Webhook secret missing");
+  }
 
-    // Handle the event
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        const paymentIntent = event.data.object;
-        const sessionList = await stripe.checkout.sessions.list({
-          payment_intent: paymentIntent.id,
+  // Get the signature sent by Stripe
+  const signature = request.headers["stripe-signature"] as string;
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      request.body,
+      signature,
+      endpointSecret
+    );
+  } catch (err: any) {
+    console.log(`⚠️ Webhook signature verification failed.`, err.message);
+    return response.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case "payment_intent.succeeded":
+      const paymentIntent = event.data.object;
+      const sessionList = await stripe.checkout.sessions.list({
+        payment_intent: paymentIntent.id,
+      });
+      const session = sessionList.data[0];
+      if (!session) {
+        console.log("No session found for payment intent");
+        break;
+      }
+      const metadata = (session.metadata || {}) as Record<string, string>;
+      const { transactionId, appId } = metadata;
+
+      if (appId === "ai-site-builder" && transactionId) {
+        const existingTx = await prisma.transaction.findUnique({
+          where: { id: transactionId },
         });
-        const session = sessionList.data[0];
-        const metadata = (session.metadata || {}) as Record<string, string>;
-        const { transactionId, appId } = metadata;
 
-        if (appId === "ai-site-builder" && transactionId) {
+        if (existingTx && !existingTx.isPaid) {
           const transaction = await prisma.transaction.update({
             where: { id: transactionId },
             data: {
@@ -46,13 +58,15 @@ export const stripeWebHook = async (request: Request, response: Response) => {
               },
             },
           });
+        } else {
+          console.log("Transaction already paid or not found");
         }
-        break;
-      default:
-        console.log(`Unhandled event type ${event.type}`);
-    }
-
-    // Return a response to acknowledge receipt of the event
-    response.json({ received: true });
+      }
+      break;
+    default:
+      console.log(`Unhandled event type ${event.type}`);
   }
+
+  // Return a response to acknowledge receipt of the event
+  response.json({ received: true });
 };

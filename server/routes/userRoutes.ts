@@ -17,7 +17,7 @@ userRouter.post("/project", protect, createUserProject);
 userRouter.post("/create-project", protect, createUserProject);
 userRouter.get("/project/:projectId", protect, getUserProject);
 userRouter.get("/projects", protect, getUserProjects);
-userRouter.get("/publish-toggle/:projectId", protect, togglePublish);
+userRouter.post("/publish-toggle/:projectId", protect, togglePublish);
 userRouter.post("/purchase-credits", protect, purchaseCredits);
 userRouter.get("/profile", protect, getUserProfile);
 

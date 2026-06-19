@@ -8,6 +8,7 @@ import { auth } from "./lib/auth.js";
 import userRouter from "./routes/userRoutes.js";
 import projectRouter from "./routes/projectRoutes.js";
 import { stripeWebHook } from "./controllers/stripeWebhook.js";
+import { WSManager } from "./src/api/websocket/wsManager.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -23,23 +24,31 @@ app.use(cors(corsOption));
 app.post("/api/stripe", express.raw({ type: "application/json" }), stripeWebHook);
 app.use(express.json({ limit: "50mb" }));
 const authHandler = toNodeHandler(auth);
-// Mount all auth routes with regex to match /api/auth and all sub-paths
-app.all(/^\/api\/auth(\/.*)?$/, (req, res) => {
+// Mount all auth routes — app.use is required for Express 5 compatibility
+app.use("/api/auth", (req, res) => {
     return authHandler(req, res);
 });
 app.use("/api/user", userRouter);
 app.use("/api/project", projectRouter);
+// ── Health check ──────────────────────────────────────────────────
+app.get("/health", (_req, res) => {
+    res.json({ status: "ok" });
+});
+// ── Production: serve client build + SPA fallback ─────────────────
 if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../../client/dist")));
-    app.get("*", (req, res) => {
-        res.sendFile(path.join(__dirname, "../../client/dist/index.html"));
+    const clientDir = path.join(__dirname, "../../client/dist");
+    app.use(express.static(clientDir));
+    app.get("/{*splat}", (_req, res) => {
+        res.sendFile(path.join(clientDir, "index.html"));
     });
 }
 else {
-    app.get("/", (req, res) => {
+    app.get("/", (_req, res) => {
         res.send("Server is Live!");
     });
 }
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Server is running at port ${port}`);
 });
+// Initialize WebSocket Server
+new WSManager(server);

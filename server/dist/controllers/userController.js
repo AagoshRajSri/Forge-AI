@@ -11,7 +11,7 @@ export const getUserCredits = async (req, res) => {
         const user = await prisma.user.findUnique({
             where: { id: userId },
         });
-        res.json({ credits: user?.credits });
+        res.json({ credits: user?.credits ?? 0 });
     }
     catch (error) {
         console.log(error.code || error.message);
@@ -65,6 +65,13 @@ export const createUserProject = async (req, res) => {
                 credits: { decrement: 5 },
             },
         });
+        await prisma.transaction.create({
+            data: {
+                userId,
+                type: "FULL_PAGE_GEN",
+                credits: -5,
+            },
+        });
         // enhance user prompt
         const enhancedPrompt = await generateWithHF(`
     You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
@@ -96,17 +103,8 @@ export const createUserProject = async (req, res) => {
             },
         });
         // generate website code
-        const code = await generateWithHF(`
-Generate a production-ready website.
-Return ONLY HTML + Tailwind CSS.
-No explanation text.
-Use Tailwind script: <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-User request:
-${enhancedPrompt}
-
-HTML Output:
-    `);
+        const systemPrompt = "You are an expert web developer. Generate a production-ready website based on the user's request. Return ONLY valid HTML with Tailwind CSS classes. No explanations, no markdown formatting outside of the code block. Use Tailwind script: <script src=\"https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4\"></script>";
+        const code = await generateWithHF(enhancedPrompt, systemPrompt);
         if (!code) {
             await prisma.conversation.create({
                 data: {
@@ -121,15 +119,43 @@ HTML Output:
             });
             return res.status(500).json({ message: "Failed to generate code" });
         }
+        const cleanedCode = code
+            .replace(/```[a-z]*\n?/gi, "")
+            .replace(/```$/g, "")
+            .trim();
+        if (!cleanedCode) {
+            await prisma.conversation.create({
+                data: {
+                    role: "assistant",
+                    content: "The AI failed to generate valid code. Please try a different prompt.",
+                    projectId: project.id,
+                },
+            });
+            await prisma.user.update({
+                where: { id: userId },
+                data: { credits: { increment: 5 } },
+            });
+            return res.status(500).json({ message: "Failed to generate valid code (empty response)" });
+        }
+        // Ensure main branch exists
+        const branch = await prisma.branch.upsert({
+            where: {
+                projectId_name: { projectId: project.id, name: "main" },
+            },
+            update: {},
+            create: {
+                projectId: project.id,
+                name: "main",
+                isDefault: true,
+            },
+        });
         //create version for the project
         const version = await prisma.version.create({
             data: {
-                code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
+                branchId: branch.id,
+                patch: "",
+                fullHtml: cleanedCode,
                 description: "Initial Version",
-                projectId: project.id,
             },
         });
         await prisma.conversation.create({
@@ -142,20 +168,19 @@ HTML Output:
         await prisma.websiteProject.update({
             where: { id: project.id },
             data: {
-                current_code: code
-                    .replace(/```[a-z]*\n?/gi, "")
-                    .replace(/```$/g, "")
-                    .trim(),
+                current_code: cleanedCode,
                 current_version_index: version.id,
             },
         });
         res.json({ projectId: project.id });
     }
     catch (error) {
-        await prisma.user.update({
-            where: { id: userId },
-            data: { credits: { increment: 5 } },
-        });
+        if (userId) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { credits: { increment: 5 } },
+            }).catch(() => { }); // best-effort refund
+        }
         console.log(error);
         res.status(500).json({ message: error.message });
     }
@@ -174,13 +199,22 @@ export const getUserProject = async (req, res) => {
                 conversation: {
                     orderBy: { timestamp: "asc" },
                 },
-                versions: { orderBy: { timestamp: "asc" } },
+                // Versions are nested under branches — flatten them for the client
+                branches: {
+                    include: {
+                        versions: { orderBy: { timestamp: "asc" } },
+                    },
+                },
             },
         });
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
-        res.json({ project });
+        // Flatten versions from all branches so the client gets a single `versions` array
+        const versions = project.branches.flatMap((b) => b.versions);
+        const { branches: _branches, ...projectData } = project;
+        const response = { ...projectData, versions };
+        res.json({ project: response });
     }
     catch (error) {
         console.log(error.code || error.message);
@@ -246,14 +280,21 @@ export const purchaseCredits = async (req, res) => {
         };
         const userId = req.userId;
         const { planId } = req.body;
-        const origin = req.headers.origin;
+        const allowedOrigins = process.env.TRUSTED_ORIGINS?.split(",").filter(Boolean) || ["http://localhost:5173", "http://localhost:3000"];
+        let origin = req.headers.origin;
+        if (!origin || !allowedOrigins.includes(origin)) {
+            origin = allowedOrigins[0];
+        }
         const plan = plans[planId];
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
         if (!plan) {
             return res.status(400).json({ message: "Plan not found" });
         }
         const transaction = await prisma.transaction.create({
             data: {
-                userId: userId,
+                userId,
                 planId: req.body.planId,
                 amount: plan.amount,
                 credits: plan.credits,
@@ -270,7 +311,7 @@ export const purchaseCredits = async (req, res) => {
                         product_data: {
                             name: `AiSiteBuilder - ${plan.credits} credits`,
                         },
-                        unit_amount: Math.floor(transaction.amount) * 100,
+                        unit_amount: Math.floor((transaction.amount ?? 0) * 100),
                     },
                     quantity: 1,
                 },
@@ -283,6 +324,22 @@ export const purchaseCredits = async (req, res) => {
             expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
         });
         res.json({ payment_link: session.url });
+    }
+    catch (error) {
+        console.log(error.code || error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+export const getUserProfile = async (req, res) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+        res.json({ user });
     }
     catch (error) {
         console.log(error.code || error.message);
